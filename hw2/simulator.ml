@@ -142,14 +142,62 @@ let sbytes_of_data : data -> sbyte list = function
 *)
 let debug_simulator = ref false
 
+
+(* OPen module here else it will give some errors in the above code, function names might interfere*)
+open Int64_overflow
+
 (* Interpret a condition code with respect to the given flags. *)
-let interp_cnd {fo; fs; fz} : cnd -> bool = fun x -> failwith "interp_cnd unimplemented"
+let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
+  begin match x with
+  | Eq -> (fz = true)
+  | Neq -> (fz = false)
+  | Lt -> (fs <> fo)
+  | Le -> ((fs <> fo) || fz = true)
+  | Gt -> ((fs = fo) && fz = false)
+  | Ge -> (fs = fo)
+  end
+
 
 (* Maps an X86lite address into Some OCaml array index,
    or None if the address is not within the legal address space. *)
 let map_addr (addr:quad) : int option =
-failwith "map_addr not implemented"
+  if ((addr <= mem_top) && (addr >= mem_bot)) then
+    Some (Int64.to_int (Int64.sub addr mem_bot))
+  else None
 
+  (* Third, implement the interpretation of operands (including indirect addresses), since this functionality will be needed for simulating instructions. DONE!
+  TODO: **Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
+  TODO:***You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine *)
+
+  (* type operand = Imm of imm            (* immediate *)
+  | Reg of reg            (* register *)
+  | Ind1 of imm           (* indirect: displacement *)
+  | Ind2 of reg           (* indirect: (%reg) *)
+  | Ind3 of (imm * reg)   (*indirect: displacement(%reg) *)*)
+
+let get_indirect (instr: ins) (ind: int) (m:mach) :int64 =
+  let operand = List.nth instr ind
+  in
+    begin match operand with
+    | Ind1 i1 ->
+        (match i1 with 
+        (* Immediate operands *)
+        | Lit l -> l 
+        | Lbl l -> failwith "Label not resolved")
+    (* Registers *)
+    | Ind2 i2 -> m.regs.(rind i2)
+    (* Displacement *)
+    | Ind3 (i3, r) ->
+        (begin match i3 with
+        (* Add value to register if literal *)
+        | Lit l -> Int64.add m.regs.(rind r) l
+        | Lbl l -> failwith "Label not resolved"
+        end)
+    | _ -> failwith "Need to Ind; indirect; type"
+    end
+
+  (* mach is machine state *)
+let interp_opcode (insn : ins) (m : mach) : unit =
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
     - compute the source and/or destination information from the operands
