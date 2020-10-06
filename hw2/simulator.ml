@@ -208,14 +208,28 @@ let load_from_operand (operand: operand) (m: mach): quad =
                          end
   end
 
+let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit = 
+  failwith "store_to_memaddr unimplemented"
+
+
 (*Resolves an operand in a given machinestate. It returns the updated machinestate where the value at the operand has been updated.*)
-let store_to_operand (operand: operand) (m: mach) (value: quad): mach =
+let store_to_operand (operand: operand) (m: mach) (value: quad): unit =
   begin match operand with
   | Imm   imm         -> failwith "can't store to immediates"
-  | Reg   reg         -> failwith "store_to_operand unimplemented" (*TODO*)
-  | Ind1  imm         -> failwith "store_to_operand unimplemented" (*TODO*)
-  | Ind2  reg         -> failwith "store_to_operand unimplemented" (*TODO*)
-  | Ind3  (imm, reg)  -> failwith "store_to_operand unimplemented" (*TODO*)
+
+  | Reg   reg         -> (m.regs.(rind reg) <- value)
+
+  | Ind1  imm         -> begin match imm with
+                         | Lit addr  -> store_to_memaddr addr m value
+                         | Lbl _     -> failwith "Label not resolved"
+                         end
+
+  | Ind2  reg         -> store_to_memaddr (m.regs.(rind reg)) m value
+
+  | Ind3  (imm, reg)  -> begin match imm with
+                         | Lit value -> store_to_memaddr (Int64.add value m.regs.(rind reg)) m value
+                         | Lbl _     -> failwith "Label not resolved"
+                         end
   end
 
 (*Returns the Instruction Rip points to*)
