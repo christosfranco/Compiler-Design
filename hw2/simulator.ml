@@ -164,7 +164,7 @@ let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
 (* Calculates whether there is overflow sets fo if true*)
 (* Gets most significant bit by rightshifting all other bits, set fs if equal to 1 *)
 (* Sets fz if equal to zero *)
-let set_condition_flags (res : Int64_overflow.t) (m : mach) : unit =
+let set_cnd_flags (res : Int64_overflow.t) (m : mach) : unit =
   (m.flags.fo <- res.Int64_overflow.overflow;
   let res2 = res.Int64_overflow.value in
   m.flags.fs <- (Int64.shift_right_logical res2 63) = Int64.one;
@@ -173,12 +173,14 @@ let set_condition_flags (res : Int64_overflow.t) (m : mach) : unit =
 (* Maps an X86lite address into Some OCaml array index,
    or None if the address is not within the legal address space. *)
 (* Has to be mem_top - ins_size due to the mem_top being one past last byte, and the last instruction has to fill the instruction size.  *)
+(* TODO: Discuss whether the last highest addr is correct *)
 let map_addr (addr:quad) : int option =
-  if ((addr <= (Int64.sub mem_top ins_size)) && (addr >= mem_bot)) then
+  if ((addr < (mem_top)) && (addr >= mem_bot)) then
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
-  (* Third, implement the interpretation of operands (including indirect addresses), since this functionality will be needed for simulating instructions. DONE!
+  (* Third, implement the interpretation of operands (including indirect addresses), since this functionality will be needed for simulating instructions. 
+  TODO: make the function include operands; Imm and Reg.
   TODO: **Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
   TODO:***You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine *)
 
