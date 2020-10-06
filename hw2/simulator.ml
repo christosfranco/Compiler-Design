@@ -175,8 +175,8 @@ let map_addr (addr:quad) : int option =
   | Ind2 of reg           (* indirect: (%reg) *)
   | Ind3 of (imm * reg)   (*indirect: displacement(%reg) *)*)
 
-let get_indirect (instr: ins) (ind: int) (m:mach) :int64 =
-  let operand = List.nth instr ind
+let get_indirect ((opcode, operands): ins) (ind: int) (m:mach) :int64 =
+  let operand = List.nth operands ind
   in
     begin match operand with
     | Ind1 i1 ->
