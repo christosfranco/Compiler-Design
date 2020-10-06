@@ -227,6 +227,16 @@ let load_from_operand (operand: operand) (m: mach): quad =
                          end
   end
 
+(*Resolves an operand in a given machinestate. It returns the updated machinestate where the value at the operand has been updated.*)
+let store_to_operand (operand: operand) (m: mach) (value: quad): mach =
+  begin match operand with
+  | Imm   imm         -> failwith "can't store to immediates"
+  | Reg   reg         -> failwith "store_to_operand unimplemented" (*TODO*)
+  | Ind1  imm         -> failwith "store_to_operand unimplemented" (*TODO*)
+  | Ind2  reg         -> failwith "store_to_operand unimplemented" (*TODO*)
+  | Ind3  (imm, reg)  -> failwith "store_to_operand unimplemented" (*TODO*)
+  end
+
 
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
