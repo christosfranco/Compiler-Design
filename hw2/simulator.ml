@@ -204,6 +204,29 @@ let load_from_memaddr (addr: quad) (m: mach): quad =
   | None        -> raise X86lite_segfault
   end
 
+(*Resolves an operand in a given machinestate and returns its value*)
+let load_from_operand (operand: operand) (m: mach): quad =
+  begin match operand with
+  | Imm   imm         -> begin match imm with
+                         | Lit value -> value
+                         | Lbl _     -> failwith "Label not resolved"
+                         end
+                         
+  | Reg   reg         -> m.regs.(rind reg)
+  
+  | Ind1  imm         -> begin match imm with
+                         | Lit value -> load_from_memaddr value m
+                         | Lbl _     -> failwith "Label not resolved"
+                         end
+                         
+  | Ind2  reg         -> load_from_memaddr (m.regs.(rind reg)) m
+  
+  | Ind3  (imm, reg)  -> begin match imm with
+                         | Lit value -> load_from_memaddr (Int64.add value m.regs.(rind reg)) m
+                         | Lbl _     -> failwith "Label not resolved"
+                         end
+  end
+
 
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
