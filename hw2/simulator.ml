@@ -173,9 +173,8 @@ let set_cnd_flags (res : Int64_overflow.t) (m : mach) : unit =
 (* Maps an X86lite address into Some OCaml array index,
    or None if the address is not within the legal address space. *)
 (* Has to be mem_top - ins_size due to the mem_top being one past last byte, and the last instruction has to fill the instruction size.  *)
-(* TODO: Discuss whether the last highest addr is correct *)
 let map_addr (addr:quad) : int option =
-  if ((addr < (mem_top)) && (addr >= mem_bot)) then
+  if (((Int64.add addr 8L) <= (mem_top)) && (addr >= mem_bot)) then
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
