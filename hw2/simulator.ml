@@ -161,7 +161,7 @@ let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
 (* Maps an X86lite address into Some OCaml array index,
    or None if the address is not within the legal address space. *)
 let map_addr (addr:quad) : int option =
-  if ((addr <= mem_top) && (addr >= mem_bot)) then
+  if ((addr < mem_top) && (addr >= mem_bot)) then
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
