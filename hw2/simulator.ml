@@ -208,6 +208,7 @@ let load_from_operand (operand: operand) (m: mach): quad =
                          end
   end
 
+(*Stores the given value in the memory addresses addr+0 ...addr+7*)
 let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit = 
   failwith "store_to_memaddr unimplemented"
 
