@@ -269,7 +269,7 @@ let fetch_instruction (m: mach): ins =
 
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
-failwith "interp_opcode unimplemented"
+failwith "interp_opcode unimplemented test"
 
 
     (* We have provided a module for performing 64-bit arithmetic with overflow detection. You may find this useful for setting the status flags.
