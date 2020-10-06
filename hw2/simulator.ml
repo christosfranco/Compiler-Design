@@ -259,6 +259,12 @@ failwith "interp_opcode unimplemented test"
     You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine.
  *)
 
+(*Implements the step function for Movq*)
+let step_movq (m: mach) (operands: operand list): unit =
+begin match operands with
+| src::dest::[] -> store_to_operand dest m (load_from_operand src m);
+| _             -> failwith ""
+end
 
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
@@ -268,7 +274,13 @@ failwith "interp_opcode unimplemented test"
     - set the condition flags
 *)
 let step (m:mach) : unit =
-failwith "step unimplemented"
+  let (opcode, operands) = fetch_instruction m in
+  m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
+  begin match opcode with
+  | Movq -> step_movq m operands;
+  | _ -> failwith "unimplemented instruction"
+  end
+
 
 (* Runs the machine until the rip register reaches a designated
    memory address. Returns the contents of %rax when the 
