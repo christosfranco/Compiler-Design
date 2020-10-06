@@ -196,6 +196,15 @@ let get_indirect ((opcode, operands): ins) (ind: int) (m:mach) :int64 =
     | _ -> failwith "Need to Ind; indirect; type"
     end
 
+
+(*Loads a quad from a specified memory address*)
+let load_from_memaddr (addr: quad) (m: mach): quad =
+  begin match map_addr addr with
+  | Some index  -> failwith "load_from_memaddr unimplemented" (*TODO find out how to use int64_of_sbytes*)
+  | None        -> raise X86lite_segfault
+  end
+
+
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
 failwith "interp_opcode unimplemented"
