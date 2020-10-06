@@ -252,6 +252,20 @@ let store_to_operand (operand: operand) (m: mach) (value: quad): mach =
   | Ind3  (imm, reg)  -> failwith "store_to_operand unimplemented" (*TODO*)
   end
 
+(*Returns the Instruction Rip points to*)
+let fetch_instruction (m: mach): ins =
+  let addr =
+    begin match map_addr m.regs.(rind Rip) with
+    | Some index -> index
+    | None       -> raise X86lite_segfault
+    end
+  in
+  
+  begin match m.mem.(addr) with
+  | InsB0 instr -> instr
+  | InsFrag     -> failwith "Expected InsB0 got InsFrag"
+  | Byte _      -> failwith "Expected InsB0 got Byte"
+  end
 
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
