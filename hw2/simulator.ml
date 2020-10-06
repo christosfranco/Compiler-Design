@@ -147,6 +147,9 @@ let debug_simulator = ref false
 open Int64_overflow
 
 (* Interpret a condition code with respect to the given flags. *)
+(* fo : overflow,    bit set if value larger than 64-bit *)
+(* fs : significant, bit set if negative *)
+(* fz : zero,        bit set if zero *)
 let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
   begin match x with
   | Eq -> (fz = true)
@@ -157,11 +160,21 @@ let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
   | Ge -> (fs = fo)
   end
 
+(*   You'll probably want a function that sets the three condition flags after a result has been computed. *)
+(* Calculates whether there is overflow sets fo if true*)
+(* Gets most significant bit by rightshifting all other bits, set fs if equal to 1 *)
+(* Sets fz if equal to zero *)
+let set_condition_flags (res : Int64_overflow.t) (m : mach) : unit =
+  (m.flags.fo <- res.Int64_overflow.overflow;
+  let res2 = res.Int64_overflow.value in
+  m.flags.fs <- (Int64.shift_right_logical res2 63) = Int64.one;
+  m.flags.fz <- res2 = Int64.zero)
 
 (* Maps an X86lite address into Some OCaml array index,
    or None if the address is not within the legal address space. *)
+(* Has to be mem_top - ins_size due to the mem_top being one past last byte, and the last instruction has to fill the instruction size.  *)
 let map_addr (addr:quad) : int option =
-  if ((addr < mem_top) && (addr >= mem_bot)) then
+  if ((addr <= (Int64.sub mem_top ins_size)) && (addr >= mem_bot)) then
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
@@ -241,6 +254,15 @@ let store_to_operand (operand: operand) (m: mach) (value: quad): mach =
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
 failwith "interp_opcode unimplemented"
+
+
+    (* We have provided a module for performing 64-bit arithmetic with overflow detection. You may find this useful for setting the status flags.
+  
+    Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
+    You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine.
+ *)
+
+
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
     - compute the source and/or destination information from the operands
