@@ -178,39 +178,6 @@ let map_addr (addr:quad) : int option =
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
-  (* Third, implement the interpretation of operands (including indirect addresses), since this functionality will be needed for simulating instructions. 
-  TODO: make the function include operands; Imm and Reg.
-  TODO: **Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
-  TODO:***You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine *)
-
-  (* type operand = Imm of imm            (* immediate *)
-  | Reg of reg            (* register *)
-  | Ind1 of imm           (* indirect: displacement *)
-  | Ind2 of reg           (* indirect: (%reg) *)
-  | Ind3 of (imm * reg)   (*indirect: displacement(%reg) *)*)
-
-let get_indirect ((opcode, operands): ins) (ind: int) (m:mach) :int64 =
-  let operand = List.nth operands ind
-  in
-    begin match operand with
-    | Ind1 i1 ->
-        (match i1 with 
-        (* Immediate operands *)
-        | Lit l -> l 
-        | Lbl l -> failwith "Label not resolved")
-    (* Registers *)
-    | Ind2 i2 -> m.regs.(rind i2)
-    (* Displacement *)
-    | Ind3 (i3, r) ->
-        (begin match i3 with
-        (* Add value to register if literal *)
-        | Lit l -> Int64.add m.regs.(rind r) l
-        | Lbl l -> failwith "Label not resolved"
-        end)
-    | _ -> failwith "Need to Ind; indirect; type"
-    end
-
-
 (*Loads a quad from a specified memory address*)
 let load_from_memaddr (addr: quad) (m: mach): quad =
   begin match map_addr addr with
