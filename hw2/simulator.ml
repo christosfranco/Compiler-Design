@@ -198,6 +198,7 @@ let get_indirect (instr: ins) (ind: int) (m:mach) :int64 =
 
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
+failwith "interp_opcode unimplemented"
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
     - compute the source and/or destination information from the operands
