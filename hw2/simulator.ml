@@ -181,8 +181,8 @@ let map_addr (addr:quad) : int option =
 (*Loads a quad from a specified memory address*)
 let load_from_memaddr (addr: quad) (m: mach): quad =
   begin match map_addr addr with
-  | Some index  -> failwith "load_from_memaddr unimplemented" (*TODO find out how to use int64_of_sbytes*)
-  | None        -> raise X86lite_segfault
+  | Some i -> int64_of_sbytes [m.mem.(i + 0); m.mem.(i + 1); m.mem.(i + 2); m.mem.(i + 3); m.mem.(i + 4); m.mem.(i + 5); m.mem.(i + 6); m.mem.(i + 7)]
+  | None   -> raise X86lite_segfault
   end
 
 (*Resolves an operand in a given machinestate and returns its value*)
