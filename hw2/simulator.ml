@@ -160,18 +160,17 @@ let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
   | Ge -> (fs = fo)
   end
 
-(*   You'll probably want a function that sets the three condition flags after a result has been computed. *)
+(* You'll probably want a function that sets the three condition flags after a result has been computed. *)
 (* Calculates whether there is overflow sets fo if true*)
 (* Gets most significant bit by rightshifting all other bits, set fs if equal to 1 *)
 (* Sets fz if equal to zero *)
 let set_cnd_flags (res : Int64_overflow.t) (m : mach) : unit =
   (m.flags.fo <- res.Int64_overflow.overflow;
   let res2 = res.Int64_overflow.value in
-  m.flags.fs <- (Int64.shift_right_logical res2 63) = Int64.one;
-  m.flags.fz <- res2 = Int64.zero)
+    m.flags.fs <- (Int64.shift_right_logical res2 63) = Int64.one;
+    m.flags.fz <- res2 = Int64.zero)
 
-(* Maps an X86lite address into Some OCaml array index,
-   or None if the address is not within the legal address space. *)
+(* Maps an X86lite address into Some OCaml array index, or None if the address is not within the legal address space. *)
 (* Has to be mem_top - ins_size due to the mem_top being one past last byte, and the last instruction has to fill the instruction size.  *)
 let map_addr (addr:quad) : int option =
   if (((Int64.add addr 8L) <= (mem_top)) && (addr >= mem_bot)) then
@@ -180,20 +179,20 @@ let map_addr (addr:quad) : int option =
 
 (*Returns the int64 address of an indirect operand*)
 let mem_addr_of_operand (operand: operand) (m: mach): quad =
-begin match operand with
-| Ind1  imm         -> begin match imm with
-                       | Lit addr  -> addr
-                       | Lbl _     -> failwith "Label not resolved"
-                       end
-                         
-| Ind2  reg         -> m.regs.(rind reg)
-  
-| Ind3  (imm, reg)  -> begin match imm with
-                       | Lit offset -> Int64.add offset m.regs.(rind reg)
-                       | Lbl _      -> failwith "Label not resolved"
-                       end
-| _                 -> failwith "can't get the address of a direct operand"
-end
+  begin match operand with
+  | Ind1  imm         -> begin match imm with
+                        | Lit addr  -> addr
+                        | Lbl _     -> failwith "Label not resolved"
+                        end
+                          
+  | Ind2  reg         -> m.regs.(rind reg)
+    
+  | Ind3  (imm, reg)  -> begin match imm with
+                        | Lit offset -> Int64.add offset m.regs.(rind reg)
+                        | Lbl _      -> failwith "Label not resolved"
+                        end
+  | _                 -> failwith "can't get the address of a direct operand"
+  end
 
 (*Loads a quad from a specified memory address*)
 let load_from_memaddr (addr: quad) (m: mach): quad =
@@ -253,17 +252,6 @@ let fetch_instruction (m: mach): ins =
   | Byte _      -> failwith "Expected InsB0 got Byte"
   end
 
-  (* mach is machine state *)
-let interp_opcode (insn : ins) (m : mach) : unit =
-failwith "interp_opcode unimplemented test"
-
-
-    (* We have provided a module for performing 64-bit arithmetic with overflow detection. You may find this useful for setting the status flags.
-  
-    Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
-    You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine.
- *)
-
 (*Implements the step function for Leaq*)
 let step_leaq (m: mach) (operands: operand list): unit =
   begin match operands with
@@ -309,7 +297,7 @@ let step (m:mach) : unit =
   | Movq  -> step_movq  m operands;
   | Pushq -> step_pushq m operands;
   | Popq  -> step_popq  m operands;
-  | _ -> failwith "unimplemented instruction"
+  | _     -> failwith "unimplemented instruction"
   end
 
 
