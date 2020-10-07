@@ -298,6 +298,14 @@ let step_callq (m: mach) (operands: operand list): unit =
   | _       -> failwith "Wrong number of arguments for callq"
   end
 
+(*Implements the step function for Retq*)
+let step_retq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | [] -> store_to_operand (Ind2 Rip) m (load_from_operand (Ind2 Rsp) m);
+          m.regs.(rind Rsp) <- Int64.add m.regs.(rind Rsp) 8L;
+  | _  -> failwith "Wrong number of arguments for retq"
+  end
+
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
     - compute the source and/or destination information from the operands
@@ -318,6 +326,7 @@ let step (m:mach) : unit =
   (*Control Flow Instructions*)
   | Jmp   -> step_jmp   m operands;
   | Callq -> step_callq m operands;
+  | Retq  -> step_retq  m operands;
 
   (*Unimplemented Instructions*)
   | _     -> failwith "unimplemented instruction"
