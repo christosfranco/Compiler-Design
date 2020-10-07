@@ -269,8 +269,8 @@ let step_movq (m: mach) (operands: operand list): unit =
 (*Implements the step function for Pushq*)
 let step_pushq (m: mach) (operands: operand list): unit =
   begin match operands with
-  | src::[] -> store_to_operand (Ind2 Rsp) m (load_from_operand src m);
-               m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+  | src::[] -> m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+               store_to_operand (Ind2 Rsp) m (load_from_operand src m);
   | _       -> failwith "Wrong number of arguments for Pushq"
   end
 
@@ -292,8 +292,8 @@ let step_jmp (m: mach) (operands: operand list): unit =
 (*Implements the step function for Callq*)
 let step_callq (m: mach) (operands: operand list): unit =
   begin match operands with
-  | src::[] -> store_to_operand (Ind2 Rsp) m (load_from_operand (Ind2 Rip) m);
-               m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+  | src::[] -> m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+               store_to_operand (Ind2 Rsp) m (load_from_operand (Ind2 Rip) m);
                store_to_operand (Ind2 Rip) m (load_from_operand src m);
   | _       -> failwith "Wrong number of arguments for callq"
   end
