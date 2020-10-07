@@ -286,6 +286,14 @@ let step_pushq (m: mach) (operands: operand list): unit =
   | _       -> failwith "Wrong number of arguments for Pushq"
   end
 
+(*Implements the step function for Popq*)
+let step_popq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | dest::[] -> store_to_operand dest m (load_from_operand (Ind2 Rsp) m);
+                m.regs.(rind Rsp) <- Int64.add m.regs.(rind Rsp) 8L;
+  | _        -> failwith "Wrong number of arguments for Popq"
+  end
+
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
     - compute the source and/or destination information from the operands
@@ -300,6 +308,7 @@ let step (m:mach) : unit =
   | Leaq  -> step_leaq  m operands;
   | Movq  -> step_movq  m operands;
   | Pushq -> step_pushq m operands;
+  | Popq  -> step_popq  m operands;
   | _ -> failwith "unimplemented instruction"
   end
 
