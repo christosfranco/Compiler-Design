@@ -209,8 +209,20 @@ let load_from_operand (operand: operand) (m: mach): quad =
   end
 
 (*Stores the given value in the memory addresses addr+0 ...addr+7*)
-let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit = 
-  failwith "store_to_memaddr unimplemented"
+let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit =
+  let bytes = sbytes_of_int64 value in
+  begin match map_addr addr with
+  | Some i -> (*print_endline @@ "Store " ^ (Int64.to_string value) ^ " to " ^ (string_of_int i);*)
+              (m.mem.(i+0) <- List.nth bytes 0);
+              (m.mem.(i+1) <- List.nth bytes 1);
+              (m.mem.(i+2) <- List.nth bytes 2);
+              (m.mem.(i+3) <- List.nth bytes 3);
+              (m.mem.(i+4) <- List.nth bytes 4);
+              (m.mem.(i+5) <- List.nth bytes 5);
+              (m.mem.(i+6) <- List.nth bytes 6);
+              (m.mem.(i+7) <- List.nth bytes 7);
+  | None   -> raise X86lite_segfault
+  end
 
 
 (*Resolves an operand in a given machinestate. It returns the updated machinestate where the value at the operand has been updated.*)
@@ -228,8 +240,8 @@ let store_to_operand (operand: operand) (m: mach) (value: quad): unit =
   | Ind2  reg         -> store_to_memaddr (m.regs.(rind reg)) m value
 
   | Ind3  (imm, reg)  -> begin match imm with
-                         | Lit value -> store_to_memaddr (Int64.add value m.regs.(rind reg)) m value
-                         | Lbl _     -> failwith "Label not resolved"
+                         | Lit offset  -> store_to_memaddr (Int64.add offset m.regs.(rind reg)) m value
+                         | Lbl _       -> failwith "Label not resolved"
                          end
   end
 
