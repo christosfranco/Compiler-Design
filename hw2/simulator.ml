@@ -264,11 +264,18 @@ failwith "interp_opcode unimplemented test"
     You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine.
  *)
 
+(*Implements the step function for Leaq*)
+let step_leaq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::dest::[] -> store_to_operand dest m (mem_addr_of_operand src m);
+  | _             -> failwith "Wrong number of arguments for Leaq"
+end
+
 (*Implements the step function for Movq*)
 let step_movq (m: mach) (operands: operand list): unit =
 begin match operands with
 | src::dest::[] -> store_to_operand dest m (load_from_operand src m);
-| _             -> failwith ""
+| _             -> failwith "Wrong number of arguments for Movq"
 end
 
 (* Simulates one step of the machine:
@@ -282,6 +289,7 @@ let step (m:mach) : unit =
   let (opcode, operands) = fetch_instruction m in
   m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
   begin match opcode with
+  | Leaq -> step_leaq m operands;
   | Movq -> step_movq m operands;
   | _ -> failwith "unimplemented instruction"
   end
