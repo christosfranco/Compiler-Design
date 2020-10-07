@@ -164,11 +164,13 @@ let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
 (* Calculates whether there is overflow sets fo if true*)
 (* Gets most significant bit by rightshifting all other bits, set fs if equal to 1 *)
 (* Sets fz if equal to zero *)
+let cnd_helper (res : int64) (m : mach) : unit =
+  (m.flags.fs <- (Int64.shift_right_logical res 63) = Int64.one;
+   m.flags.fz <- res = Int64.zero)
+
 let set_cnd_flags (res : Int64_overflow.t) (m : mach) : unit =
   (m.flags.fo <- res.Int64_overflow.overflow;
-  let res2 = res.Int64_overflow.value in
-  m.flags.fs <- (Int64.shift_right_logical res2 63) = Int64.one;
-  m.flags.fz <- res2 = Int64.zero)
+  cnd_helper res.Int64_overflow.value m)
 
 (* Maps an X86lite address into Some OCaml array index,
    or None if the address is not within the legal address space. *)
@@ -243,7 +245,7 @@ let load_from_operand (operand: operand) (m: mach): quad =
   end
 
 (*Resolves an operand in a given machinestate. It returns the updated machinestate where the value at the operand has been updated.*)
-let store_to_operand (operand: operand) (m: mach) (value: quad): mach =
+let store_to_operand (operand: operand) (m: mach) (value: quad): unit =
   begin match operand with
   | Imm   imm         -> failwith "can't store to immediates"
   | Reg   reg         -> failwith "store_to_operand unimplemented" (*TODO*)
@@ -267,9 +269,92 @@ let fetch_instruction (m: mach): ins =
   | Byte _      -> failwith "Expected InsB0 got Byte"
   end
 
+
+(* Takes operation code and the machine state and returns new machine state after performing 
+logical operation, this includes setting flags and storing values *)
+let logic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
+  let src = load_from_operand (List.nth oplist 0) m in
+  let dest = load_from_operand (List.nth oplist 1) m in
+  begin match opcode with
+    | Notq -> let ans = Int64.lognot src in store_to_operand (List.nth oplist 0) m ans
+    (*  *)
+    | Andq -> let ans = Int64.logand dest src in (store_to_operand (List.nth oplist 1) m ans;
+    cnd_helper ans m; m.flags.fo <- false)
+    | Orq  -> let ans = Int64.logor dest src in (store_to_operand (List.nth oplist 1) m ans;
+    cnd_helper ans m; m.flags.fo <- false)
+    | Xorq -> let ans = Int64.logxor dest src in (store_to_operand (List.nth oplist 1) m ans;
+    cnd_helper ans m; m.flags.fo <- false)
+    | _ -> ()
+  end
+
+let arithmetic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
+  let src = load_from_operand (List.nth oplist 0) m in
+  let dest = load_from_operand (List.nth oplist 1) m in
+  begin match opcode with
+    | Addq -> let ans = Int64_overflow.add dest src in 
+    (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
+    | Negq -> let ans = Int64_overflow.neg src in
+    (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
+    (* If we have the smallest int64 -2^63 and change the most significant bit
+    with the negate operation we will get overflow as the highest int64 is 2^63 -1 *)
+    (* if dest = Int64.min_int then m.flags.fo <- true *)
+    set_cnd_flags ans m)
+    | Cmpq -> let ans = Int64_overflow.sub dest src in set_cnd_flags ans m
+    | Subq -> let ans = Int64_overflow.sub dest src in 
+    (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
+    (* If we have the smallest int64 -2^63 and substract this to dest 
+    we will get overflow as the highest int64 is 2^63 -1 *)
+    (* if src = Int64.min_int then m.flags.fo <- true *)
+    | Imulq -> let ans = Int64_overflow.mul dest src in
+    (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
+    | Decq  -> let ans = Int64_overflow.pred src in
+    (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
+    (* get overflow similar to above if src = Int64.min_int *)
+    | Incq  -> let ans = Int64_overflow.succ src in
+    (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
+    | _     -> ()
+  end
+
+  
+
+  
+let change_rip_up  (m : mach) : unit =
+  m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+
+(* An instruction is an opcode plus its operands.
+   Note that arity and other constraints about the operands 
+   are not checked. *)
+(* type ins = opcode * operand list   *)
   (* mach is machine state *)
 let interp_opcode (insn : ins) (m : mach) : unit =
-failwith "interp_opcode unimplemented test"
+  begin match insn with
+  | (opcode, oplist) ->
+    begin match opcode with
+    (* logical operations *)
+    | Notq | Andq | Orq | Xorq ->
+    logic opcode oplist m;
+    (* bitwise shift operations *)
+    | Sarq | Shrq | Shlq | Set _->
+    failwith "not implemented"
+    (* bitwise opcode oplist m; *)
+    (* Arithmetic operations *)
+    | Cmpq | Negq | Addq | Subq | Imulq | Incq | Decq -> 
+    arithmetic opcode oplist m; 
+    (* datamove *)
+    | Leaq | Movq | Pushq | Popq ->
+        failwith "not implemented"
+    (* data_move opcode oplist m; *)
+    (* jump instructions *)
+    | Jmp | J _ | Callq | Retq ->
+        failwith "not implemented"
+    (* jump opcode oplist m *)
+    end
+  end
 
 
     (* We have provided a module for performing 64-bit arithmetic with overflow detection. You may find this useful for setting the status flags.
