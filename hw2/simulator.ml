@@ -178,6 +178,23 @@ let map_addr (addr:quad) : int option =
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
+(*Returns the int64 address of an indirect operand*)
+let mem_addr_of_operand (operand: operand) (m: mach): quad =
+begin match operand with
+| Ind1  imm         -> begin match imm with
+                       | Lit addr  -> addr
+                       | Lbl _     -> failwith "Label not resolved"
+                       end
+                         
+| Ind2  reg         -> m.regs.(rind reg)
+  
+| Ind3  (imm, reg)  -> begin match imm with
+                       | Lit offset -> Int64.add offset m.regs.(rind reg)
+                       | Lbl _      -> failwith "Label not resolved"
+                       end
+| _                 -> failwith "can't get the address of a direct operand"
+end
+
 (*Loads a quad from a specified memory address*)
 let load_from_memaddr (addr: quad) (m: mach): quad =
   begin match map_addr addr with
@@ -188,24 +205,12 @@ let load_from_memaddr (addr: quad) (m: mach): quad =
 (*Resolves an operand in a given machinestate and returns its value*)
 let load_from_operand (operand: operand) (m: mach): quad =
   begin match operand with
-  | Imm   imm         -> begin match imm with
-                         | Lit value -> value
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
-                         
-  | Reg   reg         -> m.regs.(rind reg)
-  
-  | Ind1  imm         -> begin match imm with
-                         | Lit value -> load_from_memaddr value m
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
-                         
-  | Ind2  reg         -> load_from_memaddr (m.regs.(rind reg)) m
-  
-  | Ind3  (imm, reg)  -> begin match imm with
-                         | Lit value -> load_from_memaddr (Int64.add value m.regs.(rind reg)) m
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
+  | Imm   imm -> begin match imm with
+                 | Lit value -> value
+                 | Lbl _     -> failwith "Label not resolved"
+                 end
+  | Reg   reg -> m.regs.(rind reg)
+  | _         -> load_from_memaddr (mem_addr_of_operand operand m) m
   end
 
 (*Stores the given value in the memory addresses addr+0 ...addr+7*)
@@ -228,21 +233,9 @@ let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit =
 (*Resolves an operand in a given machinestate. It returns the updated machinestate where the value at the operand has been updated.*)
 let store_to_operand (operand: operand) (m: mach) (value: quad): unit =
   begin match operand with
-  | Imm   imm         -> failwith "can't store to immediates"
-
-  | Reg   reg         -> (m.regs.(rind reg) <- value)
-
-  | Ind1  imm         -> begin match imm with
-                         | Lit addr  -> store_to_memaddr addr m value
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
-
-  | Ind2  reg         -> store_to_memaddr (m.regs.(rind reg)) m value
-
-  | Ind3  (imm, reg)  -> begin match imm with
-                         | Lit offset  -> store_to_memaddr (Int64.add offset m.regs.(rind reg)) m value
-                         | Lbl _       -> failwith "Label not resolved"
-                         end
+  | Imm   imm -> failwith "can't store to immediates"
+  | Reg   reg -> (m.regs.(rind reg) <- value)
+  | _         -> store_to_memaddr (mem_addr_of_operand operand m) m value
   end
 
 (*Returns the Instruction Rip points to*)
