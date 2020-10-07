@@ -278,7 +278,7 @@ let step_movq (m: mach) (operands: operand list): unit =
   | _             -> failwith "Wrong number of arguments for Movq"
   end
 
-(*Implements the step function for Movq*)
+(*Implements the step function for Pushq*)
 let step_pushq (m: mach) (operands: operand list): unit =
   begin match operands with
   | src::[] -> store_to_operand (Ind2 Rsp) m (load_from_operand src m);
