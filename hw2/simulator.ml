@@ -323,9 +323,9 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   end
   in
   (* set flags fs and fz *)
-  (store_to_operand (List.nth oplist 1) m ans;
+  store_to_operand (List.nth oplist 1) m ans;
   if value = 0 then () else cnd_helper ans m;
-  (* set flag fo *)
+  (* set flag fo, if needed *)
   begin match opcode with
   (* logical right shift, DONT KEEP MOST SIGNIFICANT *)
   | Shrq -> if value = 1 then m.flags.fo <- (Int64.shift_right_logical dest 63) = Int64.one
@@ -338,7 +338,7 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   (* A right arithmetic shift of a binary number by 1. The empty position in the most significant bit is filled with a copy of the original MSB. *)
   | Sarq -> if value = 1 then m.flags.fo <- false else ()
   | _    -> ()
-  end)
+  end
 
 
   
@@ -359,8 +359,7 @@ let interp_opcode (insn : ins) (m : mach) : unit =
     logic opcode oplist m;
     (* bitwise shift operations *)
     | Sarq | Shrq | Shlq ->
-    failwith "not implemented"
-    (* shift_operations opcode oplist m; *)
+    shift_operations opcode oplist m;
     (* Serepate *)
     | Set _  | J _->
     failwith "not implemented"
@@ -376,6 +375,13 @@ let interp_opcode (insn : ins) (m : mach) : unit =
         failwith "not implemented"
     (* jump opcode oplist m *)
     end
+  end
+
+(*Implements the step function for Leaq*)
+let step_leaq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::dest::[] -> store_to_operand dest m (mem_addr_of_operand src m);
+  | _             -> failwith "Wrong number of arguments for Leaq"
   end
 
 (*Implements the step function for Movq*)
@@ -437,8 +443,7 @@ let step (m:mach) : unit =
   m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
   begin match opcode with
   (*Data Movement Instructions*)
-  | Leaq  -> failwith "notimplemented"
-  (* step_leaq  m operands; *)
+  | Leaq  -> step_leaq  m operands;
   | Movq  -> step_movq  m operands;
   | Pushq -> step_pushq m operands;
   | Popq  -> step_popq  m operands;
