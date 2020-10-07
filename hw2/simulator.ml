@@ -160,7 +160,7 @@ let interp_cnd {fo; fs; fz} : cnd -> bool = fun x ->
   | Ge -> (fs = fo)
   end
 
-(*   You'll probably want a function that sets the three condition flags after a result has been computed. *)
+(* You'll probably want a function that sets the three condition flags after a result has been computed. *)
 (* Calculates whether there is overflow sets fo if true*)
 (* Gets most significant bit by rightshifting all other bits, set fs if equal to 1 *)
 (* Sets fz if equal to zero *)
@@ -172,86 +172,72 @@ let set_cnd_flags (res : Int64_overflow.t) (m : mach) : unit =
   (m.flags.fo <- res.Int64_overflow.overflow;
   cnd_helper res.Int64_overflow.value m)
 
-(* Maps an X86lite address into Some OCaml array index,
-   or None if the address is not within the legal address space. *)
+
+(* Maps an X86lite address into Some OCaml array index, or None if the address is not within the legal address space. *)
 (* Has to be mem_top - ins_size due to the mem_top being one past last byte, and the last instruction has to fill the instruction size.  *)
-(* TODO: Discuss whether the last highest addr is correct *)
 let map_addr (addr:quad) : int option =
-  if ((addr < (mem_top)) && (addr >= mem_bot)) then
+  if (((Int64.add addr 8L) <= (mem_top)) && (addr >= mem_bot)) then
     Some (Int64.to_int (Int64.sub addr mem_bot))
   else None
 
-  (* Third, implement the interpretation of operands (including indirect addresses), since this functionality will be needed for simulating instructions. 
-  TODO: make the function include operands; Imm and Reg.
-  TODO: **Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
-  TODO:***You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine *)
-
-  (* type operand = Imm of imm            (* immediate *)
-  | Reg of reg            (* register *)
-  | Ind1 of imm           (* indirect: displacement *)
-  | Ind2 of reg           (* indirect: (%reg) *)
-  | Ind3 of (imm * reg)   (*indirect: displacement(%reg) *)*)
-
-let get_indirect ((opcode, operands): ins) (ind: int) (m:mach) :int64 =
-  let operand = List.nth operands ind
-  in
-    begin match operand with
-    | Ind1 i1 ->
-        (match i1 with 
-        (* Immediate operands *)
-        | Lit l -> l 
-        | Lbl l -> failwith "Label not resolved")
-    (* Registers *)
-    | Ind2 i2 -> m.regs.(rind i2)
-    (* Displacement *)
-    | Ind3 (i3, r) ->
-        (begin match i3 with
-        (* Add value to register if literal *)
-        | Lit l -> Int64.add m.regs.(rind r) l
-        | Lbl l -> failwith "Label not resolved"
-        end)
-    | _ -> failwith "Need to Ind; indirect; type"
-    end
-
+(*Returns the int64 address of an indirect operand*)
+let mem_addr_of_operand (operand: operand) (m: mach): quad =
+  begin match operand with
+  | Ind1  imm         -> begin match imm with
+                        | Lit addr  -> addr
+                        | Lbl _     -> failwith "Label not resolved"
+                        end
+                          
+  | Ind2  reg         -> m.regs.(rind reg)
+    
+  | Ind3  (imm, reg)  -> begin match imm with
+                        | Lit offset -> Int64.add offset m.regs.(rind reg)
+                        | Lbl _      -> failwith "Label not resolved"
+                        end
+  | _                 -> failwith "can't get the address of a direct operand"
+  end
 
 (*Loads a quad from a specified memory address*)
 let load_from_memaddr (addr: quad) (m: mach): quad =
   begin match map_addr addr with
-  | Some index  -> failwith "load_from_memaddr unimplemented" (*TODO find out how to use int64_of_sbytes*)
-  | None        -> raise X86lite_segfault
+  | Some i -> int64_of_sbytes [m.mem.(i + 0); m.mem.(i + 1); m.mem.(i + 2); m.mem.(i + 3); m.mem.(i + 4); m.mem.(i + 5); m.mem.(i + 6); m.mem.(i + 7)]
+  | None   -> raise X86lite_segfault
   end
 
 (*Resolves an operand in a given machinestate and returns its value*)
 let load_from_operand (operand: operand) (m: mach): quad =
   begin match operand with
-  | Imm   imm         -> begin match imm with
-                         | Lit value -> value
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
-                         
-  | Reg   reg         -> m.regs.(rind reg)
-  
-  | Ind1  imm         -> begin match imm with
-                         | Lit value -> load_from_memaddr value m
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
-                         
-  | Ind2  reg         -> load_from_memaddr (m.regs.(rind reg)) m
-  
-  | Ind3  (imm, reg)  -> begin match imm with
-                         | Lit value -> load_from_memaddr (Int64.add value m.regs.(rind reg)) m
-                         | Lbl _     -> failwith "Label not resolved"
-                         end
+  | Imm   imm -> begin match imm with
+                 | Lit value -> value
+                 | Lbl _     -> failwith "Label not resolved"
+                 end
+  | Reg   reg -> m.regs.(rind reg)
+  | _         -> load_from_memaddr (mem_addr_of_operand operand m) m
   end
+
+(*Stores the given value in the memory addresses addr+0 ...addr+7*)
+let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit =
+  let bytes = sbytes_of_int64 value in
+  begin match map_addr addr with
+  | Some i -> (*print_endline @@ "Store " ^ (Int64.to_string value) ^ " to " ^ (string_of_int i);*)
+              (m.mem.(i+0) <- List.nth bytes 0);
+              (m.mem.(i+1) <- List.nth bytes 1);
+              (m.mem.(i+2) <- List.nth bytes 2);
+              (m.mem.(i+3) <- List.nth bytes 3);
+              (m.mem.(i+4) <- List.nth bytes 4);
+              (m.mem.(i+5) <- List.nth bytes 5);
+              (m.mem.(i+6) <- List.nth bytes 6);
+              (m.mem.(i+7) <- List.nth bytes 7);
+  | None   -> raise X86lite_segfault
+  end
+
 
 (*Resolves an operand in a given machinestate. It returns the updated machinestate where the value at the operand has been updated.*)
 let store_to_operand (operand: operand) (m: mach) (value: quad): unit =
   begin match operand with
-  | Imm   imm         -> failwith "can't store to immediates"
-  | Reg   reg         -> failwith "store_to_operand unimplemented" (*TODO*)
-  | Ind1  imm         -> failwith "store_to_operand unimplemented" (*TODO*)
-  | Ind2  reg         -> failwith "store_to_operand unimplemented" (*TODO*)
-  | Ind3  (imm, reg)  -> failwith "store_to_operand unimplemented" (*TODO*)
+  | Imm   imm -> failwith "can't store to immediates"
+  | Reg   reg -> (m.regs.(rind reg) <- value)
+  | _         -> store_to_memaddr (mem_addr_of_operand operand m) m value
   end
 
 (*Returns the Instruction Rip points to*)
@@ -356,13 +342,52 @@ let interp_opcode (insn : ins) (m : mach) : unit =
     end
   end
 
+(*Implements the step function for Movq*)
+let step_movq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::dest::[] -> store_to_operand dest m (load_from_operand src m);
+  | _             -> failwith "Wrong number of arguments for Movq"
+  end
 
-    (* We have provided a module for performing 64-bit arithmetic with overflow detection. You may find this useful for setting the status flags.
-  
-    Groups of instructions share common behavior -- for example, all of the arithmetic instructions are quite similar. You should factor out the commonality as much as you can in order to keep your code clean.
-    You will probably want to develop small test cases to try out the functionality of your interpreter. See gradedtests.ml for some examples of how to set up tests that can look at the final state of the machine.
- *)
+(*Implements the step function for Pushq*)
+let step_pushq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::[] -> m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+               store_to_operand (Ind2 Rsp) m (load_from_operand src m);
+  | _       -> failwith "Wrong number of arguments for Pushq"
+  end
 
+(*Implements the step function for Popq*)
+let step_popq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | dest::[] -> store_to_operand dest m (load_from_operand (Ind2 Rsp) m);
+                m.regs.(rind Rsp) <- Int64.add m.regs.(rind Rsp) 8L;
+  | _        -> failwith "Wrong number of arguments for Popq"
+  end
+
+(*Implements the step function for Jmp*)
+let step_jmp (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::[] -> store_to_operand (Ind2 Rip) m (load_from_operand src m);
+  | _       -> failwith "Wrong number of arguments for jmp"
+  end
+
+(*Implements the step function for Callq*)
+let step_callq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::[] -> m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+               store_to_operand (Ind2 Rsp) m (load_from_operand (Ind2 Rip) m);
+               store_to_operand (Ind2 Rip) m (load_from_operand src m);
+  | _       -> failwith "Wrong number of arguments for callq"
+  end
+
+(*Implements the step function for Retq*)
+let step_retq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | [] -> store_to_operand (Ind2 Rip) m (load_from_operand (Ind2 Rsp) m);
+          m.regs.(rind Rsp) <- Int64.add m.regs.(rind Rsp) 8L;
+  | _  -> failwith "Wrong number of arguments for retq"
+  end
 
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
@@ -372,7 +397,25 @@ let interp_opcode (insn : ins) (m : mach) : unit =
     - set the condition flags
 *)
 let step (m:mach) : unit =
-failwith "step unimplemented"
+  let (opcode, operands) = fetch_instruction m in
+  m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
+  begin match opcode with
+  (*Data Movement Instructions*)
+  | Leaq  -> failwith "notimplemented"
+  (* step_leaq  m operands; *)
+  | Movq  -> step_movq  m operands;
+  | Pushq -> step_pushq m operands;
+  | Popq  -> step_popq  m operands;
+
+  (*Control Flow Instructions*)
+  | Jmp   -> step_jmp   m operands;
+  | Callq -> step_callq m operands;
+  | Retq  -> step_retq  m operands;
+
+  (*Unimplemented Instructions*)
+  | _     -> failwith "unimplemented instruction"
+  end
+
 
 (* Runs the machine until the rip register reaches a designated
    memory address. Returns the contents of %rax when the 
