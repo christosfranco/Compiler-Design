@@ -150,8 +150,8 @@ open Int64_overflow
 (* fo : overflow,    bit set if value larger than 64-bit *)
 (* fs : significant, bit set if negative *)
 (* fz : zero,        bit set if zero *)
-let interp_cnd {fo; fs; fz} : cnd -> bool = fun command ->
-  begin match command with
+let interp_cnd {fo; fs; fz} : cnd -> bool = fun cc ->
+  begin match cc with
   | Eq -> (fz = true)
   | Neq -> (fz = false)
   | Lt -> (fs <> fo)
@@ -275,34 +275,35 @@ let logic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
 
 let arithmetic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   let src = load_from_operand (List.nth oplist 0) m in
-  let dest = load_from_operand (List.nth oplist 1) m in
+  (* Apparently its not possible to define value such as dest if it is not used, 
+  will fail the tests *)
   begin match opcode with
-  | Addq -> let ans = Int64_overflow.add dest src in 
-  (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
-  set_cnd_flags ans m)
   | Negq -> let ans = Int64_overflow.neg src in
-  (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
-  (* If we have the smallest int64 -2^63 and change the most significant bit
-  with the negate operation we will get overflow as the highest int64 is 2^63 -1 *)
-  (* if dest = Int64.min_int then m.flags.fo <- true *)
-  set_cnd_flags ans m)
-  | Cmpq -> let ans = Int64_overflow.sub dest src in set_cnd_flags ans m
-  | Subq -> let ans = Int64_overflow.sub dest src in 
-  (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
-  set_cnd_flags ans m)
-  (* If we have the smallest int64 -2^63 and substract this to dest 
-  we will get overflow as the highest int64 is 2^63 -1 *)
-  (* if src = Int64.min_int then m.flags.fo <- true *)
-  | Imulq -> let ans = Int64_overflow.mul dest src in
-  (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
-  set_cnd_flags ans m)
+    (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
+    (* If we have the smallest int64 -2^63 and change the most significant bit
+    with the negate operation we will get overflow as the highest int64 is 2^63 -1 *)
+    set_cnd_flags ans m;
+    if src = Int64.min_int then m.flags.fo <- true else print_endline ("set overflow"))
+  | Addq -> let dest = load_from_operand (List.nth oplist 1) m in let ans = Int64_overflow.add dest src in 
+    (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
+  | Cmpq -> let dest = load_from_operand (List.nth oplist 1) m in let ans = Int64_overflow.sub dest src in set_cnd_flags ans m
+  | Subq -> let dest = load_from_operand (List.nth oplist 1) m in let ans = Int64_overflow.sub dest src in 
+    (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
+    set_cnd_flags ans m;
+    (* If we have the smallest int64 -2^63 and substract this to dest 
+    we will get overflow as the highest int64 is 2^63 -1 *)
+    if src = Int64.min_int then m.flags.fo <- true)
+  | Imulq ->let dest = load_from_operand (List.nth oplist 1) m in let ans = Int64_overflow.mul dest src in
+    (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
   | Decq  -> let ans = Int64_overflow.pred src in
-  (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
-  set_cnd_flags ans m)
+    (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
   (* get overflow similar to above if src = Int64.min_int *)
   | Incq  -> let ans = Int64_overflow.succ src in
-  (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
-  set_cnd_flags ans m)
+    (store_to_operand (List.nth oplist 0) m ans.Int64_overflow.value;
+    set_cnd_flags ans m)
   | _     -> ()
   end
 
@@ -341,41 +342,24 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   end
 
 
-  
-let change_rip_up  (m : mach) : unit =
-  m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
-
-(* An instruction is an opcode plus its operands.
-   Note that arity and other constraints about the operands 
-   are not checked. *)
-(* type ins = opcode * operand list   *)
-  (* mach is machine state *)
-let interp_opcode (insn : ins) (m : mach) : unit =
-  begin match insn with
-  | (opcode, oplist) ->
-    begin match opcode with
-    (* logical operations *)
-    | Notq | Andq | Orq | Xorq ->
-    logic opcode oplist m;
-    (* bitwise shift operations *)
-    | Sarq | Shrq | Shlq ->
-    shift_operations opcode oplist m;
-    (* Serepate *)
-    | Set _  | J _->
-    failwith "not implemented"
-    (* Arithmetic operations *)
-    | Cmpq | Negq | Addq | Subq | Imulq | Incq | Decq -> 
-    arithmetic opcode oplist m; 
-    (* datamove *)
-    | Leaq | Movq | Pushq | Popq ->
-        failwith "not implemented"
-    (* data_move opcode oplist m; *)
-    (* jump instructions *)
-    | Jmp | Callq | Retq ->
-        failwith "not implemented"
-    (* jump opcode oplist m *)
-    end
+(*Implements the step function for Set cc*)
+let step_set (m: mach) (operands: operand list) (cc:cnd): unit =
+  begin match operands, cc with
+  | dest::[], cc -> if interp_cnd {fo = m.flags.fo; fs = m.flags.fs; fz = m.flags.fz} cc
+                    then store_to_operand dest m Int64.one
+                    else store_to_operand dest m Int64.zero
+  | _             -> failwith "Wrong number of arguments for Set"
   end
+
+(*Implements the step function for J cc*)
+let step_j (m: mach) (operands: operand list) (cc:cnd): unit =
+  begin match operands,cc with
+  | dest::[], cc -> if interp_cnd {fo = m.flags.fo; fs = m.flags.fs; fz = m.flags.fz} cc
+                    then m.regs.(rind Rip) <- load_from_operand dest m
+                    else m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L     
+  | _             -> failwith "Wrong number of arguments for J"
+  end
+
 
 (*Implements the step function for Leaq*)
 let step_leaq (m: mach) (operands: operand list): unit =
@@ -452,8 +436,23 @@ let step (m:mach) : unit =
   | Jmp   -> step_jmp   m operands;
   | Callq -> step_callq m operands;
   | Retq  -> step_retq  m operands;
-
+  | J cc  -> step_j     m operands cc;
   (*Unimplemented Instructions*)
+  (* logical operations *)
+  | Notq | Andq | Orq | Xorq -> 
+    logic opcode operands m;
+    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+  (* bitwise shift operations *)
+  | Sarq | Shrq | Shlq -> 
+    shift_operations opcode operands m;
+    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+  (* Arithmetic operations *)
+  | Cmpq | Negq | Addq | Subq | Imulq | Incq | Decq -> 
+    arithmetic opcode operands m; 
+    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+  (* Set cc *)
+  | Set cc-> step_set m operands cc;
+    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
   | _     -> failwith "unimplemented instruction"
   end
 
