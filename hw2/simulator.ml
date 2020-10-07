@@ -289,6 +289,15 @@ let step_jmp (m: mach) (operands: operand list): unit =
   | _       -> failwith "Wrong number of arguments for jmp"
   end
 
+(*Implements the step function for Callq*)
+let step_callq (m: mach) (operands: operand list): unit =
+  begin match operands with
+  | src::[] -> store_to_operand (Ind2 Rsp) m (load_from_operand (Ind2 Rip) m);
+               m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
+               store_to_operand (Ind2 Rip) m (load_from_operand src m);
+  | _       -> failwith "Wrong number of arguments for callq"
+  end
+
 (* Simulates one step of the machine:
     - fetch the instruction at %rip
     - compute the source and/or destination information from the operands
@@ -300,11 +309,17 @@ let step (m:mach) : unit =
   let (opcode, operands) = fetch_instruction m in
   m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
   begin match opcode with
+  (*Data Movement Instructions*)
   | Leaq  -> step_leaq  m operands;
   | Movq  -> step_movq  m operands;
   | Pushq -> step_pushq m operands;
   | Popq  -> step_popq  m operands;
+
+  (*Control Flow Instructions*)
   | Jmp   -> step_jmp   m operands;
+  | Callq -> step_callq m operands;
+
+  (*Unimplemented Instructions*)
   | _     -> failwith "unimplemented instruction"
   end
 
