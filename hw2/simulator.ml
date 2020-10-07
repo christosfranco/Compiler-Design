@@ -269,14 +269,14 @@ let step_leaq (m: mach) (operands: operand list): unit =
   begin match operands with
   | src::dest::[] -> store_to_operand dest m (mem_addr_of_operand src m);
   | _             -> failwith "Wrong number of arguments for Leaq"
-end
+  end
 
 (*Implements the step function for Movq*)
 let step_movq (m: mach) (operands: operand list): unit =
-begin match operands with
-| src::dest::[] -> store_to_operand dest m (load_from_operand src m);
-| _             -> failwith "Wrong number of arguments for Movq"
-end
+  begin match operands with
+  | src::dest::[] -> store_to_operand dest m (load_from_operand src m);
+  | _             -> failwith "Wrong number of arguments for Movq"
+  end
 
 (*Implements the step function for Movq*)
 let step_pushq (m: mach) (operands: operand list): unit =
