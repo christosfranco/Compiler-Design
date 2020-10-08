@@ -251,8 +251,8 @@ let fetch_instruction (m: mach): ins =
   
   begin match m.mem.(addr) with
   | InsB0 instr -> instr
-  | InsFrag     -> failwith "Expected InsB0 got InsFrag"
-  | Byte _      -> failwith "Expected InsB0 got Byte"
+  | InsFrag     -> failwith ("Expected InsB0 got InsFrag  at address " ^ (string_of_int addr))
+  | Byte _      -> failwith ("Expected InsB0 got Byte at address " ^ (string_of_int addr))
   end
 
 
@@ -437,22 +437,18 @@ let step (m:mach) : unit =
   | Callq -> step_callq m operands;
   | Retq  -> step_retq  m operands;
   | J cc  -> step_j     m operands cc;
-  (*Unimplemented Instructions*)
+
   (* logical operations *)
-  | Notq | Andq | Orq | Xorq -> 
-    logic opcode operands m;
-    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+  | Notq | Andq | Orq | Xorq -> logic opcode operands m;
+
   (* bitwise shift operations *)
-  | Sarq | Shrq | Shlq -> 
-    shift_operations opcode operands m;
-    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+  | Sarq | Shrq | Shlq -> shift_operations opcode operands m;
+  
   (* Arithmetic operations *)
-  | Cmpq | Negq | Addq | Subq | Imulq | Incq | Decq -> 
-    arithmetic opcode operands m; 
-    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
+  | Cmpq | Negq | Addq | Subq | Imulq | Incq | Decq -> arithmetic opcode operands m; 
+  
   (* Set cc *)
   | Set cc-> step_set m operands cc;
-    m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L
   | _     -> failwith "unimplemented instruction"
   end
 
