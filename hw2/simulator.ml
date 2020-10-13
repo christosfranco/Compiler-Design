@@ -495,6 +495,11 @@ let rec get_data (p:prog):prog =
                                 end
     end
 
+(*Get the size of one memory block*)
+let get_size_of_elem (e: elem): quad =
+  failwith "unimplemented"
+
+
 (* Convert an X86 program into an object file:
    - separate the text and data segments
    - compute the size of each segment
