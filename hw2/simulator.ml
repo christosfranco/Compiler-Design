@@ -495,10 +495,42 @@ let rec get_data (p:prog):prog =
                                 end
     end
 
-(*Get the size of one memory block*)
-let get_size_of_elem (e: elem): quad =
-  failwith "unimplemented"
 
+
+
+
+
+
+(* 
+type data = Asciz of string
+          | Quad of imm
+
+type asm = Text of ins list    (* code *)
+         | Data of data list   (* data *)
+
+(* labeled blocks of data or code *)
+type elem = { lbl: lbl; global: bool; asm: asm }
+
+type prog = elem list *)
+
+(*Get the size of one memory block
+Have to give a value for size with as argument else it cannot return the value, 
+give 0L if unknown*)
+
+let size_data (size_d:int64) (data: data) : quad = 
+    match data with 
+    | Asciz a -> Int64.add (Int64.of_int (String.length a)) (Int64.add size_d 1L) 
+    | Quad (Lit i) -> Int64.add size_d 8L
+    | _ -> size_d
+
+let get_size_of_elem (size:int64) (e: elem) : quad =
+  (* We want to get the size of an element, whether it is a data seg or a text seg *)
+  (* Datasize *)
+  begin match e.asm with
+  | Text t-> Int64.add size (Int64.of_int ((List.length t) * 8))
+  | Data d -> Int64.add size (List.fold_left size_data 0L d)
+  |  _ -> size
+  end
 
 (* Convert an X86 program into an object file:
    - separate the text and data segments
@@ -543,8 +575,9 @@ let load {entry; text_pos; data_pos; text_seg; data_seg} : mach =
   let data_and_text = Array.append text data in
   (* will copy elemets from data_and_text into sym_bytes, InsFrag will fill out space*)
     (Array.blit data_and_text 0 sym_bytes 0 (Array.length data_and_text);
+    (* Fill out remaining space in memory with empty sbytes *)
     let mem_state = Array.append sym_bytes mem_array in
-    (* Registers *)
+    (* Registers initialized as 0L, make 17 *)
     let registers = Array.make 17 0L in
     (* Set flags to false *)
     let flags = {fo=false; fs=false; fz=false;}in
