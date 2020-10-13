@@ -263,7 +263,6 @@ let logic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   let dest = load_from_operand (List.nth oplist 1) m in
   begin match opcode with
   | Notq -> let ans = Int64.lognot src in store_to_operand (List.nth oplist 0) m ans
-  (*  *)
   | Andq -> let ans = Int64.logand dest src in (store_to_operand (List.nth oplist 1) m ans;
   cnd_helper ans m; m.flags.fo <- false)
   | Orq  -> let ans = Int64.logor dest src in (store_to_operand (List.nth oplist 1) m ans;
@@ -283,7 +282,7 @@ let arithmetic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
     (* If we have the smallest int64 -2^63 and change the most significant bit
     with the negate operation we will get overflow as the highest int64 is 2^63 -1 *)
     set_cnd_flags ans m;
-    if src = Int64.min_int then m.flags.fo <- true else print_endline ("set overflow"))
+    if src = Int64.min_int then m.flags.fo <- true)
   | Addq -> let dest = load_from_operand (List.nth oplist 1) m in let ans = Int64_overflow.add dest src in 
     (store_to_operand (List.nth oplist 1) m ans.Int64_overflow.value;
     set_cnd_flags ans m)
@@ -312,7 +311,7 @@ let arithmetic (opcode: opcode) (oplist: operand list) (m:mach) : unit=
 let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   (* shift operation :
     ins = opcode :: value :: destination *)
-    (* lose high order bit to be sure no negative values *)
+    (* lose high order bit to be sure no negative values and make sure that can be compared*)
   let value = Int64.to_int (load_from_operand (List.nth oplist 0) m) in
   let dest = load_from_operand (List.nth oplist 1) m in
   let ans  =
@@ -329,9 +328,18 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   (* set flag fo, if needed *)
   begin match opcode with
   (* logical right shift, DONT KEEP MOST SIGNIFICANT *)
+  (* If k= int64 -2^63 is rightshifted by value=1 we get 2^63
+   but highest positive is int64 2^63 -1,
+   hence we would get overflow. *)
   | Shrq -> if value = 1 then m.flags.fo <- (Int64.shift_right_logical dest 63) = Int64.one
             else ()
   (*  LOGICAL LEFT should be same as Salq *)
+  (* Shifting by 62  gets **---
+     equal to 1     if    01--- or 11---
+     >> 63 gets           *----
+     If not equal then overflow
+      only non-equal if 01--- is the case
+      if this is the case then a left shift would cause a positive value to overflow into negative bit*)
   | Shlq -> if value = 1 && 
         (Int64.shift_right_logical dest 63 <> (Int64.logand (Int64.shift_right_logical dest 62) 1L))
         then m.flags.fo <- true
