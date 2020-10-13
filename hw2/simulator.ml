@@ -519,8 +519,8 @@ let size_data (size_d:int64) (data: data) : quad =
 
 let get_size_of_elem (size:int64) (e: elem) : quad =
   (* We want to get the size of an element, whether it is a data seg or a text seg *)
-  (* Datasize *)
   begin match e.asm with
+  (* The size of the text element is 8 times the size of the list of instructions *)
   | Text t-> Int64.add size (Int64.of_int ((List.length t) * 8))
   | Data d -> Int64.add size (List.fold_left size_data 0L d)
   |  _ -> size
@@ -569,7 +569,7 @@ let load {entry; text_pos; data_pos; text_seg; data_seg} : mach =
   let data_and_text = Array.append text data in
   (* will copy elemets from data_and_text into sym_bytes, InsFrag will fill out space*)
     (Array.blit data_and_text 0 sym_bytes 0 (Array.length data_and_text);
-    (* Fill out remaining space in memory with empty sbytes *)
+    (* Append the exit address exit_addr = 0xfdeadL as sbyte to end  *)
     let mem_state = Array.append sym_bytes mem_array in
     (* Registers initialized as 0L, make 17 *)
     let registers = Array.make 17 0L in
