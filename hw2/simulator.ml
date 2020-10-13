@@ -449,7 +449,6 @@ let step (m:mach) : unit =
   
   (* Set cc *)
   | Set cc-> step_set m operands cc;
-  | _     -> failwith "unimplemented instruction"
   end
 
 
@@ -476,6 +475,26 @@ exception Undefined_sym of lbl
 (* Assemble should raise this when a label is defined more than once *)
 exception Redefined_sym of lbl
 
+(*Not nice but it separates instructions from data*)
+let rec get_inst (p:prog):prog = 
+  begin match p with 
+  | [] -> []
+  | {lbl; global; asm}::ps -> begin match asm with
+                              | Text inst -> {lbl; global; asm}::(get_inst ps)
+                              | Data data -> (get_inst ps)
+                              end
+  end
+
+(*Not nice but it separates instructions from data*)
+let rec get_data (p:prog):prog = 
+    begin match p with 
+    | [] -> []
+    | {lbl; global; asm}::ps -> begin match asm with
+                                | Text inst -> (get_inst ps)
+                                | Data data -> {lbl; global; asm}::(get_inst ps)
+                                end
+    end
+
 (* Convert an X86 program into an object file:
    - separate the text and data segments
    - compute the size of each segment
@@ -491,7 +510,9 @@ exception Redefined_sym of lbl
   HINT: List.fold_left and List.fold_right are your friends.
  *)
 let assemble (p:prog) : exec =
-failwith "assemble unimplemented"
+  let p_inst = get_inst p in
+  let p_data = get_data p in
+failwith "assemble unimplemented"  
 
 (* Convert an object file into an executable machine state. 
     - allocate the mem array
