@@ -528,4 +528,24 @@ failwith "assemble unimplemented"
   may be of use.
 *)
 let load {entry; text_pos; data_pos; text_seg; data_seg} : mach = 
-failwith "load unimplemented"
+  (* Allocate mem array *)
+  let mem_array = Array.of_list (sbytes_of_int64 exit_addr) in
+  (* symbolic bytes 0xFFF8 = 0x10000 / 8 - 8 ; Number of bytes that has the sbyte type InsFrag*)
+  let sym_bytes = Array.make 0xFFF8 InsFrag in
+  let text = Array.of_list text_seg in
+  let data = Array.of_list data_seg in
+  (* text and data in one array *)
+  let data_and_text = Array.append text data in
+  (* will copy elemets from data_and_text into sym_bytes, InsFrag will fill out space*)
+    (Array.blit data_and_text 0 sym_bytes 0 (Array.length data_and_text);
+    let mem_state = Array.append sym_bytes mem_array in
+    (* Registers *)
+    let registers = Array.make 17 0L in
+    (* Set flags to false *)
+    let flags = {fo=false; fs=false; fz=false;}in
+    (* Set Rip to entry point addr *) 
+      (Array.set registers (rind Rip) entry;
+    (*Set Rsp to last word in memory *)
+      Array.set registers (rind Rsp) (0x40FFF8L);
+      {flags=flags; regs=registers; mem=mem_state;}))
+
