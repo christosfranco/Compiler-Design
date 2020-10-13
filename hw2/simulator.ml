@@ -328,9 +328,7 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   (* set flag fo, if needed *)
   begin match opcode with
   (* logical right shift, DONT KEEP MOST SIGNIFICANT *)
-  (* If k= int64 -2^63 is rightshifted by value=1 we get 2^63
-   but highest positive is int64 2^63 -1,
-   hence we would get overflow. *)
+  (* If a negative is rightshifted by value=1 we get a positive, hence we must have overflow. *)
   | Shrq -> if value = 1 then m.flags.fo <- (Int64.shift_right_logical dest 63) = Int64.one
             else ()
   (*  LOGICAL LEFT should be same as Salq *)
@@ -344,12 +342,14 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
         (Int64.shift_right_logical dest 63 <> (Int64.logand (Int64.shift_right_logical dest 62) 1L))
         then m.flags.fo <- true
         else ()
-  (* A right arithmetic shift of a binary number by 1. The empty position in the most significant bit is filled with a copy of the original MSB. *)
+  (* A right arithmetic shift of a binary number by 1. The empty position in the most significant bit is filled with a copy of the original MSB. 
+  Sarq cannot have overflow because the most significant bit is preserved, so if shift happens there is no overflow.
+   *)
   | Sarq -> if value = 1 then m.flags.fo <- false else ()
   | _    -> ()
   end
 
-
+111111111111111111111111111111111111111111111111111111111111111
 (*Implements the step function for Set cc*)
 let step_set (m: mach) (operands: operand list) (cc:cnd): unit =
   begin match operands, cc with
