@@ -495,12 +495,6 @@ let rec get_data (p:prog):prog =
                                 end
     end
 
-
-
-
-
-
-
 (* 
 type data = Asciz of string
           | Quad of imm
