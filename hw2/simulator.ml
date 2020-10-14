@@ -132,6 +132,20 @@ let sbytes_of_data : data -> sbyte list = function
   | Asciz s -> sbytes_of_string s
   | Quad (Lbl _) -> invalid_arg "sbytes_of_data: tried to serialize a label!"
 
+(*For debugging used to print an sbyte*)
+let sbyte_to_string (b:sbyte) : string = 
+  begin match b with 
+  | InsB0 instr -> "InsB0 " ^ (string_of_ins instr)
+  | InsFrag -> "InsFrag"
+  | Byte c -> "Byte \t<" ^ (Char.escaped c) ^ ">"
+  end
+
+(*For debugging used to print an sbyte*)
+let rec sbytelist_to_string (b:sbyte list) (index:int): string = 
+  begin match b with 
+  | [] -> ""
+  | l::ls -> (string_of_int index) ^ ": \t" ^ (sbyte_to_string l) ^ "\n" ^ (sbytelist_to_string ls (index + 1))
+  end
 
 (* It might be useful to toggle printing of intermediate states of your 
    simulator. Our implementation uses this mutable flag to turn on/off
@@ -623,9 +637,27 @@ let assemble (p:prog) : exec =
   let entry = resolve_lbl "main" lbl_map in
   let p_inst_resolved = resolve_lbls_in_prog lbl_map p_inst in
   (*print lbl_mapping for debugging*)
+  print_endline @@ "";
+  print_endline @@ "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
+  print_endline @@ "";
+  print_endline @@ (string_of_prog p_inst);
+  print_endline @@ "";
   print_endline @@ map_to_string lbl_map;
+  print_endline @@ "";
+  print_endline @@ (string_of_prog p_inst_resolved);
+  print_endline @@ "";
+  print_endline @@ "Length of text segment: " ^ (string_of_int (List.length (prog_to_sbytes p_inst_resolved)));
+  print_endline @@ "Length of data segment: " ^ (string_of_int (List.length (prog_to_sbytes p_data)));
+  print_endline @@ "Position of Dataseg: " ^ (Int64.to_string (Int64.sub data_pos text_pos));
+  print_endline @@ "";
+  print_endline @@ "TextSegment:";
+  print_endline @@ (sbytelist_to_string (prog_to_sbytes p_inst_resolved) 0);
+  print_endline @@ "DataSegment:";
+  print_endline @@ (sbytelist_to_string (prog_to_sbytes p_data) (List.length (prog_to_sbytes p_inst_resolved)));
+  print_endline @@ "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
+  print_endline @@ "";
   (*return*)
-  {entry = entry; text_pos = text_pos; data_pos = data_pos; text_seg=(prog_to_sbytes p_inst_resolved); data_seg= (prog_to_sbytes p_data)}
+  {entry = entry; text_pos = text_pos; data_pos = data_pos; text_seg=(prog_to_sbytes p_inst_resolved); data_seg = (prog_to_sbytes p_data)}
 
 (* Convert an object file into an executable machine state. 
     - allocate the mem array
