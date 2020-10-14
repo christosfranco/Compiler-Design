@@ -349,7 +349,6 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   | _    -> ()
   end
 
-111111111111111111111111111111111111111111111111111111111111111
 (*Implements the step function for Set cc*)
 let step_set (m: mach) (operands: operand list) (cc:cnd): unit =
   begin match operands, cc with
@@ -498,8 +497,8 @@ let rec get_data (p:prog):prog =
     begin match p with 
     | [] -> []
     | {lbl; global; asm}::ps -> begin match asm with
-                                | Text inst -> (get_inst ps)
-                                | Data data -> {lbl; global; asm}::(get_inst ps)
+                                | Text inst -> (get_data ps)
+                                | Data data -> {lbl; global; asm}::(get_data ps)
                                 end
     end
 
@@ -525,13 +524,77 @@ let size_data (size_d:int64) (data: data) : quad =
     | Quad (Lit i) -> Int64.add size_d 8L
     | _ -> size_d
 
-let get_size_of_elem (size:int64) (e: elem) : quad =
+let get_size_of_elem (e: elem) : quad =
   (* We want to get the size of an element, whether it is a data seg or a text seg *)
   begin match e.asm with
   (* The size of the text element is 8 times the size of the list of instructions *)
-  | Text t-> Int64.add size (Int64.of_int ((List.length t) * 8))
-  | Data d -> Int64.add size (List.fold_left size_data 0L d)
-  |  _ -> size
+  | Text t-> (Int64.of_int ((List.length t) * 8))
+  | Data d -> (List.fold_left size_data 0L d)
+  end
+
+let rec map_to_string (map: (lbl * quad) list): string = 
+  begin match map with 
+  | [] -> ""
+  | (x,y)::z -> "[" ^ x ^ ": " ^ (Int64.to_string y) ^ "]" ^ (map_to_string z)
+  end
+
+let rec check_for_duplicate_lbl (lbl: lbl) (map: (lbl * quad) list): unit =
+  begin match map with
+  | [] -> ()
+  | (x,_)::xs -> if x = lbl then raise (Redefined_sym lbl) else check_for_duplicate_lbl lbl xs;
+  end
+
+let rec fill_lbl (p:prog) (current_pos: quad) (current_map: (lbl * quad) list): quad * ((lbl * quad) list) =
+  begin match p with
+  | [] -> (current_pos, current_map)
+  | e::ps ->  check_for_duplicate_lbl e.lbl current_map;
+              let next_pos = Int64.add current_pos (get_size_of_elem e) in
+              let next_map = (e.lbl , current_pos)::current_map in 
+              fill_lbl ps next_pos next_map
+  end
+
+let rec resolve_lbl (lbl:lbl) (map: (lbl * quad) list): quad=
+  begin match map with
+  | [] -> raise (Undefined_sym lbl);
+  | (key, value)::tail -> if lbl = key then value else resolve_lbl lbl tail
+  end
+
+let resolve_lbls_in_operand (map: (lbl * quad) list) (operand: operand): operand =
+  begin match operand with 
+  | Imm (Lbl name) -> Imm (Lit (resolve_lbl name map))
+  | Ind1 (Lbl name) -> Ind1 (Lit (resolve_lbl name map))
+  | Ind3 ((Lbl name),reg) -> Ind3 ((Lit (resolve_lbl name map)),reg)
+  | _ -> operand
+  end
+
+let resolve_lbls_in_instr (map: (lbl * quad) list) ((opcode, operands):ins) : ins =
+  (opcode, List.map (resolve_lbls_in_operand map) operands)
+
+let resolve_lbls_in_asm (map: (lbl * quad) list) (asm: asm) : asm =
+  begin match asm with 
+  | Text intr_list -> Text (List.map (resolve_lbls_in_instr map) intr_list)
+  | Data _ -> asm
+  end
+
+let rec resolve_lbls_in_prog (map: (lbl * quad) list) (p:prog) : prog =
+  begin match p with 
+  | [] -> []
+  | {lbl; global; asm}::ps -> let asm2 = resolve_lbls_in_asm map asm in
+                              {lbl=lbl; global=global; asm=asm2}::(resolve_lbls_in_prog map ps)
+  end
+
+let rec asm_to_sbytes (asm:asm) : sbyte list =
+    begin match asm with 
+    | Text [] -> []
+    | Text (x::xs) -> (sbytes_of_ins x) @ (asm_to_sbytes (Text xs))
+    | Data [] -> []
+    | Data (x::xs) -> (sbytes_of_data x) @ (asm_to_sbytes (Data xs))
+    end
+
+let rec prog_to_sbytes (p:prog) : sbyte list =
+  begin match p with 
+  | [] -> []
+  | x::xs -> (asm_to_sbytes x.asm) @ (prog_to_sbytes (xs))
   end
 
 (* Convert an X86 program into an object file:
@@ -549,9 +612,20 @@ let get_size_of_elem (size:int64) (e: elem) : quad =
   HINT: List.fold_left and List.fold_right are your friends.
  *)
 let assemble (p:prog) : exec =
+  (*separate instructions from data*)
   let p_inst = get_inst p in
   let p_data = get_data p in
-failwith "assemble unimplemented"  
+  (*compute the memory address of each lbl as well as the size of the text segment*)
+  let text_pos = mem_bot in
+  let (data_pos, instr_lbl_map) = fill_lbl p_inst text_pos [] in
+  let (_, lbl_map) = fill_lbl p_data data_pos instr_lbl_map in
+  (*resolve the starting address*)
+  let entry = resolve_lbl "main" lbl_map in
+  let p_inst_resolved = resolve_lbls_in_prog lbl_map p_inst in
+  (*print lbl_mapping for debugging*)
+  print_endline @@ map_to_string lbl_map;
+  (*return*)
+  {entry = entry; text_pos = text_pos; data_pos = data_pos; text_seg=(prog_to_sbytes p_inst_resolved); data_seg= (prog_to_sbytes p_data)}
 
 (* Convert an object file into an executable machine state. 
     - allocate the mem array
