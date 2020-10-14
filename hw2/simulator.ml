@@ -377,7 +377,7 @@ let step_j (m: mach) (operands: operand list) (cc:cnd): unit =
   begin match operands,cc with
   | dest::[], cc -> if interp_cnd {fo = m.flags.fo; fs = m.flags.fs; fz = m.flags.fz} cc
                     then m.regs.(rind Rip) <- load_from_operand dest m
-                    else m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L     
+                    else ()   
   | _             -> failwith "Wrong number of arguments for J"
   end
 
