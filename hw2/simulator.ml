@@ -415,7 +415,7 @@ let step_popq (m: mach) (operands: operand list): unit =
 (*Implements the step function for Jmp*)
 let step_jmp (m: mach) (operands: operand list): unit =
   begin match operands with
-  | src::[] -> store_to_operand (Ind2 Rip) m (load_from_operand src m);
+  | src::[] -> store_to_operand (Reg Rip) m (load_from_operand src m);
   | _       -> failwith "Wrong number of arguments for jmp"
   end
 
@@ -423,15 +423,15 @@ let step_jmp (m: mach) (operands: operand list): unit =
 let step_callq (m: mach) (operands: operand list): unit =
   begin match operands with
   | src::[] -> m.regs.(rind Rsp) <- Int64.sub m.regs.(rind Rsp) 8L;
-               store_to_operand (Ind2 Rsp) m (load_from_operand (Ind2 Rip) m);
-               store_to_operand (Ind2 Rip) m (load_from_operand src m);
+               store_to_operand (Ind2 Rsp) m (load_from_operand (Reg Rip) m);
+               store_to_operand (Reg Rip) m (load_from_operand src m);
   | _       -> failwith "Wrong number of arguments for callq"
   end
 
 (*Implements the step function for Retq*)
 let step_retq (m: mach) (operands: operand list): unit =
   begin match operands with
-  | [] -> store_to_operand (Ind2 Rip) m (load_from_operand (Ind2 Rsp) m);
+  | [] -> store_to_operand (Reg Rip) m (load_from_operand (Ind2 Rsp) m);
           m.regs.(rind Rsp) <- Int64.add m.regs.(rind Rsp) 8L;
   | _  -> failwith "Wrong number of arguments for retq"
   end
@@ -445,6 +445,7 @@ let step_retq (m: mach) (operands: operand list): unit =
 *)
 let step (m:mach) : unit =
   let (opcode, operands) = fetch_instruction m in
+  print_endline @@ "RIP:" ^ (Int64.to_string (Int64.sub m.regs.(rind Rip) mem_bot)) ^ (string_of_ins (opcode, operands));
   m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
   begin match opcode with
   (*Data Movement Instructions*)
@@ -477,6 +478,7 @@ let step (m:mach) : unit =
    memory address. Returns the contents of %rax when the 
    machine halts. *)
 let run (m:mach) : int64 = 
+  print_endline @@ "\n\nRunning ...";
   while m.regs.(rind Rip) <> exit_addr do step m done;
   m.regs.(rind Rax)
 
@@ -673,6 +675,7 @@ let assemble (p:prog) : exec =
   may be of use.
 *)
 let load {entry; text_pos; data_pos; text_seg; data_seg} : mach = 
+  print_endline @@ "Loading";
   (* Allocate mem array *)
   let mem_array = Array.of_list (sbytes_of_int64 exit_addr) in
   (* symbolic bytes 0xFFF8 = 0x10000 / 8 - 8 ; Number of bytes that has the sbyte type InsFrag*)
@@ -683,8 +686,11 @@ let load {entry; text_pos; data_pos; text_seg; data_seg} : mach =
   let data_and_text = Array.append text data in
   (* will copy elemets from data_and_text into sym_bytes, InsFrag will fill out space*)
     (Array.blit data_and_text 0 sym_bytes 0 (Array.length data_and_text);
+    print_endline @@ (string_of_int (Array.length data_and_text));
+    print_endline @@ (string_of_int (Array.length sym_bytes));
     (* Append the exit address exit_addr = 0xfdeadL as sbyte to end  *)
     let mem_state = Array.append sym_bytes mem_array in
+    print_endline @@ (sbyte_to_string (Array.get sym_bytes 112));
     (* Registers initialized as 0L, make 17 *)
     let registers = Array.make 17 0L in
     (* Set flags to false *)
