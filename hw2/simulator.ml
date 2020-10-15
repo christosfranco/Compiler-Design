@@ -132,21 +132,6 @@ let sbytes_of_data : data -> sbyte list = function
   | Asciz s -> sbytes_of_string s
   | Quad (Lbl _) -> invalid_arg "sbytes_of_data: tried to serialize a label!"
 
-(*For debugging used to print an sbyte*)
-let sbyte_to_string (b:sbyte) : string = 
-  begin match b with 
-  | InsB0 instr -> "InsB0 " ^ (string_of_ins instr)
-  | InsFrag -> "InsFrag"
-  | Byte c -> "Byte \t<" ^ (Char.escaped c) ^ ">"
-  end
-
-(*For debugging used to print an sbyte*)
-let rec sbytelist_to_string (b:sbyte list) (index:int): string = 
-  begin match b with 
-  | [] -> ""
-  | l::ls -> (string_of_int index) ^ ": \t" ^ (sbyte_to_string l) ^ "\n" ^ (sbytelist_to_string ls (index + 1))
-  end
-
 (* It might be useful to toggle printing of intermediate states of your 
    simulator. Our implementation uses this mutable flag to turn on/off
    printing.  For instance, you might write something like:
@@ -515,28 +500,14 @@ let rec get_data (p:prog):prog =
                                 end
     end
 
-(* 
-type data = Asciz of string
-          | Quad of imm
-
-type asm = Text of ins list    (* code *)
-         | Data of data list   (* data *)
-
-(* labeled blocks of data or code *)
-type elem = { lbl: lbl; global: bool; asm: asm }
-
-type prog = elem list *)
-
-(*Get the size of one memory block
-Have to give a value for size with as argument else it cannot return the value, 
-give 0L if unknown*)
-
+(*Get the size of a data segment *)
 let size_data (size_d:int64) (data: data) : quad = 
     match data with 
     | Asciz a -> Int64.add (Int64.of_int (String.length a)) (Int64.add size_d 1L) 
     | Quad (Lit i) -> Int64.add size_d 8L
     | _ -> size_d
 
+(*Get the size of an element*)  
 let get_size_of_elem (e: elem) : quad =
   (* We want to get the size of an element, whether it is a data seg or a text seg *)
   begin match e.asm with
@@ -545,18 +516,14 @@ let get_size_of_elem (e: elem) : quad =
   | Data d -> (List.fold_left size_data 0L d)
   end
 
-let rec map_to_string (map: (lbl * quad) list): string = 
-  begin match map with 
-  | [] -> ""
-  | (x,y)::z -> "[" ^ x ^ ": " ^ (Int64.to_string y) ^ "]" ^ (map_to_string z)
-  end
-
+(*Checks if a label is aready in the map*)
 let rec check_for_duplicate_lbl (lbl: lbl) (map: (lbl * quad) list): unit =
   begin match map with
   | [] -> ()
   | (x,_)::xs -> if x = lbl then raise (Redefined_sym lbl) else check_for_duplicate_lbl lbl xs;
   end
 
+(*Fills the Label map and keeps track of the current position in memory*)
 let rec fill_lbl (p:prog) (current_pos: quad) (current_map: (lbl * quad) list): quad * ((lbl * quad) list) =
   begin match p with
   | [] -> (current_pos, current_map)
@@ -566,12 +533,14 @@ let rec fill_lbl (p:prog) (current_pos: quad) (current_map: (lbl * quad) list): 
               fill_lbl ps next_pos next_map
   end
 
+(*Gets the value of the corresponding label in the map*)
 let rec resolve_lbl (lbl:lbl) (map: (lbl * quad) list): quad=
   begin match map with
   | [] -> raise (Undefined_sym lbl);
   | (key, value)::tail -> if lbl = key then value else resolve_lbl lbl tail
   end
 
+(*Returns the operand whith resolved labels*)
 let resolve_lbls_in_operand (map: (lbl * quad) list) (operand: operand): operand =
   begin match operand with 
   | Imm (Lbl name) -> Imm (Lit (resolve_lbl name map))
@@ -580,15 +549,18 @@ let resolve_lbls_in_operand (map: (lbl * quad) list) (operand: operand): operand
   | _ -> operand
   end
 
+(*Resolves the Labels in all of the operands*)
 let resolve_lbls_in_instr (map: (lbl * quad) list) ((opcode, operands):ins) : ins =
   (opcode, List.map (resolve_lbls_in_operand map) operands)
 
+(*Resolves the Labels in all of the instructions*)
 let resolve_lbls_in_asm (map: (lbl * quad) list) (asm: asm) : asm =
   begin match asm with 
   | Text intr_list -> Text (List.map (resolve_lbls_in_instr map) intr_list)
   | Data _ -> asm
   end
 
+(*Resolves the Labels in all of the asm's*)
 let rec resolve_lbls_in_prog (map: (lbl * quad) list) (p:prog) : prog =
   begin match p with 
   | [] -> []
@@ -596,6 +568,7 @@ let rec resolve_lbls_in_prog (map: (lbl * quad) list) (p:prog) : prog =
                               {lbl=lbl; global=global; asm=asm2}::(resolve_lbls_in_prog map ps)
   end
 
+(*Converts an asm into corresponding sbytes *)
 let rec asm_to_sbytes (asm:asm) : sbyte list =
     begin match asm with 
     | Text [] -> []
@@ -604,6 +577,7 @@ let rec asm_to_sbytes (asm:asm) : sbyte list =
     | Data (x::xs) -> (sbytes_of_data x) @ (asm_to_sbytes (Data xs))
     end
 
+(*Converts a program into corresponding sbytes *)
 let rec prog_to_sbytes (p:prog) : sbyte list =
   begin match p with 
   | [] -> []
