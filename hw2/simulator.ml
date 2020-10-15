@@ -233,8 +233,7 @@ let load_from_operand (operand: operand) (m: mach): quad =
 let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit =
   let bytes = sbytes_of_int64 value in
   begin match map_addr addr with
-  | Some i -> (*print_endline @@ "Store " ^ (Int64.to_string value) ^ " to " ^ (string_of_int i);*)
-              (m.mem.(i+0) <- List.nth bytes 0);
+  | Some i -> (m.mem.(i+0) <- List.nth bytes 0);
               (m.mem.(i+1) <- List.nth bytes 1);
               (m.mem.(i+2) <- List.nth bytes 2);
               (m.mem.(i+3) <- List.nth bytes 3);
@@ -445,7 +444,6 @@ let step_retq (m: mach) (operands: operand list): unit =
 *)
 let step (m:mach) : unit =
   let (opcode, operands) = fetch_instruction m in
-  print_endline @@ "RIP:" ^ (Int64.to_string (Int64.sub m.regs.(rind Rip) mem_bot)) ^ (string_of_ins (opcode, operands));
   m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
   begin match opcode with
   (*Data Movement Instructions*)
@@ -478,7 +476,6 @@ let step (m:mach) : unit =
    memory address. Returns the contents of %rax when the 
    machine halts. *)
 let run (m:mach) : int64 = 
-  print_endline @@ "\n\nRunning ...";
   while m.regs.(rind Rip) <> exit_addr do step m done;
   m.regs.(rind Rax)
 
@@ -638,26 +635,6 @@ let assemble (p:prog) : exec =
   (*resolve the starting address*)
   let entry = resolve_lbl "main" lbl_map in
   let p_inst_resolved = resolve_lbls_in_prog lbl_map p_inst in
-  (*print lbl_mapping for debugging*)
-  print_endline @@ "";
-  print_endline @@ "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
-  print_endline @@ "";
-  print_endline @@ (string_of_prog p_inst);
-  print_endline @@ "";
-  print_endline @@ map_to_string lbl_map;
-  print_endline @@ "";
-  print_endline @@ (string_of_prog p_inst_resolved);
-  print_endline @@ "";
-  print_endline @@ "Length of text segment: " ^ (string_of_int (List.length (prog_to_sbytes p_inst_resolved)));
-  print_endline @@ "Length of data segment: " ^ (string_of_int (List.length (prog_to_sbytes p_data)));
-  print_endline @@ "Position of Dataseg: " ^ (Int64.to_string (Int64.sub data_pos text_pos));
-  print_endline @@ "";
-  print_endline @@ "TextSegment:";
-  print_endline @@ (sbytelist_to_string (prog_to_sbytes p_inst_resolved) 0);
-  print_endline @@ "DataSegment:";
-  print_endline @@ (sbytelist_to_string (prog_to_sbytes p_data) (List.length (prog_to_sbytes p_inst_resolved)));
-  print_endline @@ "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
-  print_endline @@ "";
   (*return*)
   {entry = entry; text_pos = text_pos; data_pos = data_pos; text_seg=(prog_to_sbytes p_inst_resolved); data_seg = (prog_to_sbytes p_data)}
 
@@ -675,7 +652,6 @@ let assemble (p:prog) : exec =
   may be of use.
 *)
 let load {entry; text_pos; data_pos; text_seg; data_seg} : mach = 
-  print_endline @@ "Loading";
   (* Allocate mem array *)
   let mem_array = Array.of_list (sbytes_of_int64 exit_addr) in
   (* symbolic bytes 0xFFF8 = 0x10000 / 8 - 8 ; Number of bytes that has the sbyte type InsFrag*)
@@ -686,11 +662,8 @@ let load {entry; text_pos; data_pos; text_seg; data_seg} : mach =
   let data_and_text = Array.append text data in
   (* will copy elemets from data_and_text into sym_bytes, InsFrag will fill out space*)
     (Array.blit data_and_text 0 sym_bytes 0 (Array.length data_and_text);
-    print_endline @@ (string_of_int (Array.length data_and_text));
-    print_endline @@ (string_of_int (Array.length sym_bytes));
     (* Append the exit address exit_addr = 0xfdeadL as sbyte to end  *)
     let mem_state = Array.append sym_bytes mem_array in
-    print_endline @@ (sbyte_to_string (Array.get sym_bytes 112));
     (* Registers initialized as 0L, make 17 *)
     let registers = Array.make 17 0L in
     (* Set flags to false *)
