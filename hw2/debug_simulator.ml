@@ -132,6 +132,21 @@ let sbytes_of_data : data -> sbyte list = function
   | Asciz s -> sbytes_of_string s
   | Quad (Lbl _) -> invalid_arg "sbytes_of_data: tried to serialize a label!"
 
+(*For debugging used to print an sbyte*)
+let sbyte_to_string (b:sbyte) : string = 
+  begin match b with 
+  | InsB0 instr -> "InsB0 " ^ (string_of_ins instr)
+  | InsFrag -> "InsFrag"
+  | Byte c -> "Byte \t<" ^ (Char.escaped c) ^ ">"
+  end
+
+(*For debugging used to print an sbyte*)
+let rec sbytelist_to_string (b:sbyte list) (index:int): string = 
+  begin match b with 
+  | [] -> ""
+  | l::ls -> (string_of_int index) ^ ": \t" ^ (sbyte_to_string l) ^ "\n" ^ (sbytelist_to_string ls (index + 1))
+  end
+
 (* It might be useful to toggle printing of intermediate states of your 
    simulator. Our implementation uses this mutable flag to turn on/off
    printing.  For instance, you might write something like:
@@ -218,7 +233,8 @@ let load_from_operand (operand: operand) (m: mach): quad =
 let store_to_memaddr (addr: quad) (m: mach) (value: quad): unit =
   let bytes = sbytes_of_int64 value in
   begin match map_addr addr with
-  | Some i -> (m.mem.(i+0) <- List.nth bytes 0);
+  | Some i -> (*print_endline @@ "Store " ^ (Int64.to_string value) ^ " to " ^ (string_of_int i);*)
+              (m.mem.(i+0) <- List.nth bytes 0);
               (m.mem.(i+1) <- List.nth bytes 1);
               (m.mem.(i+2) <- List.nth bytes 2);
               (m.mem.(i+3) <- List.nth bytes 3);
@@ -314,9 +330,9 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   let dest = load_from_operand (List.nth oplist 1) m in
   let ans  =
   begin match opcode with
-    | Shrq ->  Int64.shift_right_logical dest value 
+    | Shrq ->  Int64.shift_right dest value 
     | Shlq ->  Int64.shift_left dest value 
-    | Sarq ->  Int64.shift_right dest value 
+    | Sarq ->  Int64.shift_right_logical dest value 
     | _    ->  failwith "no matching opcode"
   end
   in
@@ -429,6 +445,7 @@ let step_retq (m: mach) (operands: operand list): unit =
 *)
 let step (m:mach) : unit =
   let (opcode, operands) = fetch_instruction m in
+  print_endline @@ "RIP:" ^ (Int64.to_string (Int64.sub m.regs.(rind Rip) mem_bot)) ^ (string_of_ins (opcode, operands));
   m.regs.(rind Rip) <- Int64.add m.regs.(rind Rip) 8L;
   begin match opcode with
   (*Data Movement Instructions*)
@@ -461,6 +478,7 @@ let step (m:mach) : unit =
    memory address. Returns the contents of %rax when the 
    machine halts. *)
 let run (m:mach) : int64 = 
+  print_endline @@ "\n\nRunning ...";
   while m.regs.(rind Rip) <> exit_addr do step m done;
   m.regs.(rind Rax)
 
@@ -500,14 +518,28 @@ let rec get_data (p:prog):prog =
                                 end
     end
 
-(*Get the size of a data segment *)
+(* 
+type data = Asciz of string
+          | Quad of imm
+
+type asm = Text of ins list    (* code *)
+         | Data of data list   (* data *)
+
+(* labeled blocks of data or code *)
+type elem = { lbl: lbl; global: bool; asm: asm }
+
+type prog = elem list *)
+
+(*Get the size of one memory block
+Have to give a value for size with as argument else it cannot return the value, 
+give 0L if unknown*)
+
 let size_data (size_d:int64) (data: data) : quad = 
     match data with 
     | Asciz a -> Int64.add (Int64.of_int (String.length a)) (Int64.add size_d 1L) 
     | Quad (Lit i) -> Int64.add size_d 8L
     | _ -> size_d
 
-(*Get the size of an element*)  
 let get_size_of_elem (e: elem) : quad =
   (* We want to get the size of an element, whether it is a data seg or a text seg *)
   begin match e.asm with
@@ -516,14 +548,18 @@ let get_size_of_elem (e: elem) : quad =
   | Data d -> (List.fold_left size_data 0L d)
   end
 
-(*Checks if a label is aready in the map*)
+let rec map_to_string (map: (lbl * quad) list): string = 
+  begin match map with 
+  | [] -> ""
+  | (x,y)::z -> "[" ^ x ^ ": " ^ (Int64.to_string y) ^ "]" ^ (map_to_string z)
+  end
+
 let rec check_for_duplicate_lbl (lbl: lbl) (map: (lbl * quad) list): unit =
   begin match map with
   | [] -> ()
   | (x,_)::xs -> if x = lbl then raise (Redefined_sym lbl) else check_for_duplicate_lbl lbl xs;
   end
 
-(*Fills the Label map and keeps track of the current position in memory*)
 let rec fill_lbl (p:prog) (current_pos: quad) (current_map: (lbl * quad) list): quad * ((lbl * quad) list) =
   begin match p with
   | [] -> (current_pos, current_map)
@@ -533,14 +569,12 @@ let rec fill_lbl (p:prog) (current_pos: quad) (current_map: (lbl * quad) list): 
               fill_lbl ps next_pos next_map
   end
 
-(*Gets the value of the corresponding label in the map*)
 let rec resolve_lbl (lbl:lbl) (map: (lbl * quad) list): quad=
   begin match map with
   | [] -> raise (Undefined_sym lbl);
   | (key, value)::tail -> if lbl = key then value else resolve_lbl lbl tail
   end
 
-(*Returns the operand whith resolved labels*)
 let resolve_lbls_in_operand (map: (lbl * quad) list) (operand: operand): operand =
   begin match operand with 
   | Imm (Lbl name) -> Imm (Lit (resolve_lbl name map))
@@ -549,18 +583,15 @@ let resolve_lbls_in_operand (map: (lbl * quad) list) (operand: operand): operand
   | _ -> operand
   end
 
-(*Resolves the Labels in all of the operands*)
 let resolve_lbls_in_instr (map: (lbl * quad) list) ((opcode, operands):ins) : ins =
   (opcode, List.map (resolve_lbls_in_operand map) operands)
 
-(*Resolves the Labels in all of the instructions*)
 let resolve_lbls_in_asm (map: (lbl * quad) list) (asm: asm) : asm =
   begin match asm with 
   | Text intr_list -> Text (List.map (resolve_lbls_in_instr map) intr_list)
   | Data _ -> asm
   end
 
-(*Resolves the Labels in all of the asm's*)
 let rec resolve_lbls_in_prog (map: (lbl * quad) list) (p:prog) : prog =
   begin match p with 
   | [] -> []
@@ -568,7 +599,6 @@ let rec resolve_lbls_in_prog (map: (lbl * quad) list) (p:prog) : prog =
                               {lbl=lbl; global=global; asm=asm2}::(resolve_lbls_in_prog map ps)
   end
 
-(*Converts an asm into corresponding sbytes *)
 let rec asm_to_sbytes (asm:asm) : sbyte list =
     begin match asm with 
     | Text [] -> []
@@ -577,7 +607,6 @@ let rec asm_to_sbytes (asm:asm) : sbyte list =
     | Data (x::xs) -> (sbytes_of_data x) @ (asm_to_sbytes (Data xs))
     end
 
-(*Converts a program into corresponding sbytes *)
 let rec prog_to_sbytes (p:prog) : sbyte list =
   begin match p with 
   | [] -> []
@@ -609,6 +638,26 @@ let assemble (p:prog) : exec =
   (*resolve the starting address*)
   let entry = resolve_lbl "main" lbl_map in
   let p_inst_resolved = resolve_lbls_in_prog lbl_map p_inst in
+  (*print lbl_mapping for debugging*)
+  print_endline @@ "";
+  print_endline @@ "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
+  print_endline @@ "";
+  print_endline @@ (string_of_prog p_inst);
+  print_endline @@ "";
+  print_endline @@ map_to_string lbl_map;
+  print_endline @@ "";
+  print_endline @@ (string_of_prog p_inst_resolved);
+  print_endline @@ "";
+  print_endline @@ "Length of text segment: " ^ (string_of_int (List.length (prog_to_sbytes p_inst_resolved)));
+  print_endline @@ "Length of data segment: " ^ (string_of_int (List.length (prog_to_sbytes p_data)));
+  print_endline @@ "Position of Dataseg: " ^ (Int64.to_string (Int64.sub data_pos text_pos));
+  print_endline @@ "";
+  print_endline @@ "TextSegment:";
+  print_endline @@ (sbytelist_to_string (prog_to_sbytes p_inst_resolved) 0);
+  print_endline @@ "DataSegment:";
+  print_endline @@ (sbytelist_to_string (prog_to_sbytes p_data) (List.length (prog_to_sbytes p_inst_resolved)));
+  print_endline @@ "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
+  print_endline @@ "";
   (*return*)
   {entry = entry; text_pos = text_pos; data_pos = data_pos; text_seg=(prog_to_sbytes p_inst_resolved); data_seg = (prog_to_sbytes p_data)}
 
@@ -626,6 +675,7 @@ let assemble (p:prog) : exec =
   may be of use.
 *)
 let load {entry; text_pos; data_pos; text_seg; data_seg} : mach = 
+  print_endline @@ "Loading";
   (* Allocate mem array *)
   let mem_array = Array.of_list (sbytes_of_int64 exit_addr) in
   (* symbolic bytes 0xFFF8 = 0x10000 / 8 - 8 ; Number of bytes that has the sbyte type InsFrag*)
@@ -636,8 +686,11 @@ let load {entry; text_pos; data_pos; text_seg; data_seg} : mach =
   let data_and_text = Array.append text data in
   (* will copy elemets from data_and_text into sym_bytes, InsFrag will fill out space*)
     (Array.blit data_and_text 0 sym_bytes 0 (Array.length data_and_text);
+    print_endline @@ (string_of_int (Array.length data_and_text));
+    print_endline @@ (string_of_int (Array.length sym_bytes));
     (* Append the exit address exit_addr = 0xfdeadL as sbyte to end  *)
     let mem_state = Array.append sym_bytes mem_array in
+    print_endline @@ (sbyte_to_string (Array.get sym_bytes 112));
     (* Registers initialized as 0L, make 17 *)
     let registers = Array.make 17 0L in
     (* Set flags to false *)
