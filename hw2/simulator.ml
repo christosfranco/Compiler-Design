@@ -330,9 +330,9 @@ let shift_operations (opcode: opcode) (oplist: operand list) (m:mach) : unit=
   let dest = load_from_operand (List.nth oplist 1) m in
   let ans  =
   begin match opcode with
-    | Shrq ->  Int64.shift_right dest value 
+    | Shrq ->  Int64.shift_right_logical dest value 
     | Shlq ->  Int64.shift_left dest value 
-    | Sarq ->  Int64.shift_right_logical dest value 
+    | Sarq ->  Int64.shift_right dest value 
     | _    ->  failwith "no matching opcode"
   end
   in
