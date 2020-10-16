@@ -1,0 +1,15 @@
+#directory "_build";;
+#mod_use "x86/x86.ml"
+#mod_use "util/assert.ml"
+#mod_use "util/platform.ml"
+#mod_use "ll/ll.ml";;
+#mod_use "ll/llutil.ml";;
+#mod_use "ll/llparser.ml";;
+#mod_use "ll/lllexer.ml";;
+#mod_use "ll/llinterp.ml";;
+#mod_use "backend.ml";;
+#mod_use "driver.ml";;
+#mod_use "studenttests.ml";;
+open Backend;;
+open Driver;;
+open Studenttests;;
