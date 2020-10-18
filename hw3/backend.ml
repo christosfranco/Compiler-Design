@@ -90,7 +90,7 @@ let lookup m x = List.assoc x m
    destination (usually a register).
 *)
 let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
-  function (x:Ll.operand) : ins ->
+  function (x:Ll.operand) ->
   begin match x with
   | Const imm -> Movq, [Imm (Lit imm); dest]
   | Null -> Movq, [Imm (Lit 0L); dest]
