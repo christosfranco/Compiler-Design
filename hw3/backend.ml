@@ -59,7 +59,7 @@ type ctxt = { tdecls : (tid * ty) list
             }
 
 (* useful for looking up items in tdecls or layouts *)
-let lookup m x = List.assoc x m
+let lookup map key = List.assoc key map
 
 
 (* compiling operands  ------------------------------------------------------ *)
