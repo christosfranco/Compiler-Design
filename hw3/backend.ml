@@ -140,9 +140,18 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
      Your function should simply return 0 in those cases
 *)
 let rec size_ty (tdecls:(tid * ty) list) (t:Ll.ty) : int =
-failwith "size_ty not implemented"
-
-
+  begin match t with 
+  | Void                    -> 0                                                  (*undefined*)
+  | I1                      -> 8                                                  (*pointer => 8 bytes*)
+  | I8                      -> 0                                                  (*undefined*)
+  | I64                     -> 8                                                  (*pointer => 8 bytes*)
+  | Ptr     _               -> 8                                                  (*pointer => 8 bytes*)
+  | Struct  []              -> 0                                                  (*base case for recursion => 0*)
+  | Struct  (l::ls)         -> (size_ty tdecls l) + (size_ty tdecls (Struct ls))  (*recursion over the list of types*)
+  | Array   (n, inner_type) -> n * (size_ty tdecls inner_type)                    (*n times the size of the inner type*)
+  | Fun     _               -> 0                                                  (*undefined*)
+  | Namedt  id              -> size_ty tdecls @@ lookup tdecls id                 (*lookup the type and get its size*)
+  end
 
 
 (* Generates code that computes a pointer value.
