@@ -93,9 +93,10 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
   function (x:Ll.operand) ->
   begin match x with
   | Const imm -> Movq, [Imm (Lit imm); dest]
-  | Null -> Movq, [Imm (Lit 0L); dest]
-  | Id id -> Movq, [Reg R10; dest] (* Need to move into Reg R10*)
-  | Gid gid -> Leaq, [Ind3((Lbl (Platform.mangle gid)), Rip); dest]
+  | Null      -> Movq, [Imm (Lit  0L); dest]
+(*| Id id     -> Movq, [Reg R10      ; dest] (* Need to move into Reg R10*)*)
+  | Id id     -> Movq, [lookup ctxt.layout id ;dest]
+  | Gid gid   -> Leaq, [Ind3((Lbl (Platform.mangle gid)), Rip); dest]
   end 
 
 
