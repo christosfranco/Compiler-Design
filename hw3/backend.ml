@@ -237,48 +237,48 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     | Add ->
       (compile_list_of_operands ctxt (Reg R12) op1) @
       (compile_list_of_operands ctxt (Reg R13) op2) @
-      [(Addq, [Reg R12; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Addq, [Reg R12; Reg R13]] @ 
+      [Movq, [(Reg R13); lookup ctxt.layout uid]] 
     | Sub -> 
       (compile_list_of_operands ctxt (Reg R12) op1) @
       (compile_list_of_operands ctxt (Reg R13) op2) @
-      [(Subq, [Reg R13; Reg R12])] @ 
-      [(Movq, [(Reg R12); (lookup ctxt.layout uid)])] 
+      [Subq, [Reg R13; Reg R12]] @ 
+      [Movq, [Reg R12; lookup ctxt.layout uid]] 
     | Mul -> 
       (compile_list_of_operands ctxt (Reg R12) op1) @
       (compile_list_of_operands ctxt (Reg R13) op2) @
-      [(Imulq, [Reg R12; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Imulq, [Reg R12; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     | Shl -> 
       (compile_list_of_operands ctxt (Reg R13) op1) @
       (compile_list_of_operands ctxt (Reg Rcx) op2) @
-      [(Shlq, [Reg Rcx; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Shlq, [Reg Rcx; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     | Lshr -> 
       (compile_list_of_operands ctxt (Reg R13) op1) @
       (compile_list_of_operands ctxt (Reg Rcx) op2) @
-      [(Shrq, [Reg Rcx; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Shrq, [Reg Rcx; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     | Ashr -> 
       (compile_list_of_operands ctxt (Reg R13) op1) @
       (compile_list_of_operands ctxt (Reg Rcx) op2) @
-      [(Sarq, [Reg Rcx; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Sarq, [Reg Rcx; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     | And -> 
       (compile_list_of_operands ctxt (Reg R12) op1) @
       (compile_list_of_operands ctxt (Reg R13) op2) @
-      [(Andq, [Reg R12; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Andq, [Reg R12; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     | Or -> 
       (compile_list_of_operands ctxt (Reg R12) op1) @
       (compile_list_of_operands ctxt (Reg R13) op2) @
-      [(Orq, [Reg R12; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Orq, [Reg R12; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     | Xor -> 
       (compile_list_of_operands ctxt (Reg R12) op1) @
       (compile_list_of_operands ctxt (Reg R13) op2) @
-      [(Xorq, [Reg R12; Reg R13])] @ 
-      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+      [Xorq, [Reg R12; Reg R13]] @ 
+      [Movq, [Reg R13; lookup ctxt.layout uid]] 
     end
   (* (* LLVM types *)
     type ty =
