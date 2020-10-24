@@ -99,7 +99,15 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
   | Gid   gid -> Leaq, [Ind3((Lbl (Platform.mangle gid)), Rip); dest]
   end 
 
-
+let compile_list_of_operands (ctxt:ctxt) (dest:X86.operand) (llop:Ll.operand): ins list =
+  begin match llop with
+    | Id id -> (Movq, [lookup ctxt.layout id; (Reg R10)])::
+              (compile_operand ctxt dest llop)::[]
+    | Gid gid -> (Leaq, [(Ind3((Lbl (Platform.mangle gid)), Rip)); (Reg R10)]):: 
+        [compile_operand ctxt dest llop]
+    (* If none of the above, must be single operand, of either Null or Const *)
+    | _ -> (compile_operand ctxt dest llop)::[]
+  end
 (* compiling call  ---------------------------------------------------------- *)
 
 (* You will probably find it helpful to implement a helper function that
@@ -209,9 +217,95 @@ failwith "compile_gep not implemented"
 
    - Bitcast: does nothing interesting at the assembly level
 *)
-let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
-      failwith "compile_insn not implemented"
 
+(* (* Instructions *)
+type insn =
+| Binop of bop * ty * operand * operand
+| Alloca of ty
+| Load of ty * operand
+| Store of ty * operand * operand
+| Icmp of cnd * ty * operand * operand
+| Call of ty * operand * (ty * operand) list
+| Bitcast of ty * operand * ty
+| Gep of ty * operand * operand list
+ *)
+
+let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
+  begin match i with
+  | Binop(bop, ty, op1, op2) -> 
+    begin match bop with
+    | Add ->
+      (compile_list_of_operands ctxt (Reg R12) op1) @
+      (compile_list_of_operands ctxt (Reg R13) op2) @
+      [(Addq, [Reg R12; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | Sub -> 
+      (compile_list_of_operands ctxt (Reg R12) op1) @
+      (compile_list_of_operands ctxt (Reg R13) op2) @
+      [(Subq, [Reg R13; Reg R12])] @ 
+      [(Movq, [(Reg R12); (lookup ctxt.layout uid)])] 
+    | Mul -> 
+      (compile_list_of_operands ctxt (Reg R12) op1) @
+      (compile_list_of_operands ctxt (Reg R13) op2) @
+      [(Imulq, [Reg R12; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | Shl -> 
+      (compile_list_of_operands ctxt (Reg R13) op1) @
+      (compile_list_of_operands ctxt (Reg Rcx) op2) @
+      [(Shlq, [Reg Rcx; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | Lshr -> 
+      (compile_list_of_operands ctxt (Reg R13) op1) @
+      (compile_list_of_operands ctxt (Reg Rcx) op2) @
+      [(Shrq, [Reg Rcx; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | Ashr -> 
+      (compile_list_of_operands ctxt (Reg R13) op1) @
+      (compile_list_of_operands ctxt (Reg Rcx) op2) @
+      [(Sarq, [Reg Rcx; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | And -> 
+      (compile_list_of_operands ctxt (Reg R12) op1) @
+      (compile_list_of_operands ctxt (Reg R13) op2) @
+      [(Andq, [Reg R12; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | Or -> 
+      (compile_list_of_operands ctxt (Reg R12) op1) @
+      (compile_list_of_operands ctxt (Reg R13) op2) @
+      [(Orq, [Reg R12; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    | Xor -> 
+      (compile_list_of_operands ctxt (Reg R12) op1) @
+      (compile_list_of_operands ctxt (Reg R13) op2) @
+      [(Xorq, [Reg R12; Reg R13])] @ 
+      [(Movq, [(Reg R13); (lookup ctxt.layout uid)])] 
+    end
+  (* (* LLVM types *)
+    type ty =
+    | Void
+    | I1
+    | I8
+    | I64
+    | Ptr of ty
+    | Struct of ty list
+    | Array of int * ty
+    | Fun of ty list * ty
+    | Namedt of tid 
+  *)
+  | Alloca (ty) -> 
+    begin match ty with 
+    | I1 | I8 | I64 | Ptr _ ->
+      [Subq, [Imm (Lit 8L); Reg Rsp]] 
+      @ [Movq, [Reg Rsp; (lookup ctxt.layout uid)]]
+    | _ -> []
+    end
+  | Load (ty , op)              -> []
+  | Store (ty , op1 , op2)      -> []
+  | Icmp (cnd , ty , op1 , op2) -> []
+  | Call (ty , op , ty_op_list) -> []
+  | Bitcast (ty1 , op , ty2)    -> []
+  | Gep (ty , op , oplist)      -> []
+  end
 
 
 (* compiling terminators  --------------------------------------------------- *)
@@ -262,8 +356,16 @@ let compile_lbl_block fn lbl ctxt blk : elem =
    [ NOTE: the first six arguments are numbered 0 .. 5 ]
 *)
 let arg_loc (n : int) : operand =
-failwith "arg_loc not implemented"
-
+  begin match n with
+  | 0 -> X86.Reg Rdi
+  | 1 -> X86.Reg Rsi
+  | 2 -> X86.Reg Rdx
+  | 3 -> X86.Reg Rcx
+  | 4 -> X86.Reg R08
+  | 5 -> X86.Reg R09
+  (* relative to Rbp *)
+  | _ -> X86.Ind3 (Lit (Int64.of_int ((n-4) *8)), Rbp)
+  end
 
 (* We suggest that you create a helper function that computes the
    stack layout for a given function declaration.
