@@ -327,7 +327,14 @@ let mk_lbl (fn:string) (l:string) = fn ^ "." ^ l
    [fn] - the name of the function containing this terminator
 *)
 let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
-  failwith "compile_terminator not implemented"
+  let rbp_frame_suffix = [Movq, [Reg Rbp; Reg Rsp]] @ [Popq, [Reg Rbp]] @ [Retq, []] in
+  begin match t with 
+  | Ret (Void, _)           -> rbp_frame_suffix
+  | Ret (_, Some operand)   -> (compile_operand ctxt (Reg Rax) operand) :: rbp_frame_suffix
+  | Ret (_, _)              -> failwith "expected a return argument"
+  | Br lbl                  -> failwith "branch unimplemented"
+  | Cbr (op, lbl_1, lbl_2)  -> failwith "conditional branch unimplemented"
+  end
 
 
 (* compiling blocks --------------------------------------------------------- *)
@@ -396,7 +403,11 @@ failwith "stack_layout not implemented"
      to hold all of the local stack slots.
 *)
 let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg }:fdecl) : prog =
-failwith "compile_fdecl unimplemented"
+  let rbp_frame_prefix = [Pushq, [Reg Rbp]] @ [Movq, [Reg Rsp; Reg Rbp]] @ [Subq, [Imm (Lit 8L); Reg Rsp]] in
+  (* rbp <- rsp *)
+  (* rsp <- rsp - 8 * uidlength *)
+  (* layout <- stacklayout *)
+  failwith "compile_fdecl unimplemented"
 
 
 
