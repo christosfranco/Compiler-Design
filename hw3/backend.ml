@@ -95,7 +95,7 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
 (*| Id id     -> Movq, [Reg R10;                                dest] (* Need to move into Reg R10*)*)
   | Const imm -> Movq, [Imm (Lit imm);                          dest]
   | Null      -> Movq, [Imm (Lit  0L);                          dest]
-  | Id    id  -> Movq, [Reg10;                                  dest]
+  | Id    id  -> Movq, [Reg R10;                                  dest]
   | Gid   gid -> Leaq, [Ind3((Lbl (Platform.mangle gid)), Rip); dest]
   end 
 
@@ -292,13 +292,33 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     | Fun of ty list * ty
     | Namedt of tid 
   *)
-  | Alloca (ty) -> 
+  (* allocate space on the stack relative to the type given *)
+  | Alloca (ty)                 -> 
     let size = Int64.of_int @@ size_ty ctxt.tdecls ty in
           [(Subq, [(Imm (Lit (size))); (Reg Rsp)])] @
-          [(Movq, [Reg Rsp; (lookup ctxt.layout uid)])] 
-  | Load (ty , op)              -> []
-  | Store (ty , op1 , op2)      -> []
-  | Icmp (cnd , ty , op1 , op2) -> []
+          [(Movq, [Reg Rsp; (lookup ctxt.layout uid)])]
+  (* Load value  *)
+  | Load (ty , op)              -> 
+    (compile_list_of_operands ctxt (Reg Rcx) op) @
+    [Movq, [Ind2 Rcx ; Reg Rdx]] @ 
+    [Movq, [Reg Rdx; lookup ctxt.layout uid]]
+  (* Store value  *)
+  | Store (ty , op1 , op2)      -> 
+    (compile_list_of_operands ctxt (Reg Rcx) op1) @
+    (compile_list_of_operands ctxt (Reg Rdx) op2) @
+    [Movq , [Reg Rcx; Ind2 Rdx]]
+  (* Compare two operands with the given condition code (cnd) 
+    Put the operands in regs Rcx and Rdx
+    Move literal 0 into 
+    Compare values in the two reg save answer in Rcx 
+    Set if the cc holds between Rcx and 0*)
+  | Icmp (cnd , ty , op1 , op2) -> 
+    (compile_list_of_operands ctxt (Reg Rcx) op1) @
+    (compile_list_of_operands ctxt (Reg Rdx) op2) @
+    [Movq, [Imm (Lit 0L) ; lookup ctxt.layout uid]] @ 
+    [Cmpq, [Reg Rdx; Reg Rcx] ] @
+    [Set (compile_cnd cnd), [lookup ctxt.layout uid]] 
+  
   | Call (ty , op , ty_op_list) -> []
   | Bitcast (ty1 , op , ty2)    -> []
   | Gep (ty , op , oplist)      -> []
