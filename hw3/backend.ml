@@ -345,10 +345,8 @@ let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
    [blk]  - LLVM IR code for the block
 *)
 let compile_block (fn:string) (ctxt:ctxt) (blk:Ll.block) : ins list =
-  let get_2_2 (_,a) = a in
-  (* Get part of ins list corresponding to terminator *)
-  let term = compile_terminator fn ctxt (get_2_2 blk.term) in
-  term
+  let term = compile_terminator fn ctxt (snd blk.term) in
+  List.concat(List.map (compile_insn ctxt) (blk.insns)) @ term
 
 let compile_lbl_block fn lbl ctxt blk : elem =
   Asm.text (mk_lbl fn lbl) (compile_block fn ctxt blk)
