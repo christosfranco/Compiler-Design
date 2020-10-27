@@ -294,7 +294,7 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
   *)
   | Alloca (ty) -> 
     begin match ty with 
-    | I1 | I8 | I64 | Ptr _ ->
+    | I1 | I64 | Ptr _ ->
       [Subq, [Imm (Lit 8L); Reg Rsp]] 
       @ [Movq, [Reg Rsp; (lookup ctxt.layout uid)]]
     | _ -> []
@@ -345,7 +345,10 @@ let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
    [blk]  - LLVM IR code for the block
 *)
 let compile_block (fn:string) (ctxt:ctxt) (blk:Ll.block) : ins list =
-  failwith "compile_block not implemented"
+  let get_2_2 (_,a) = a in
+  (* Get part of ins list corresponding to terminator *)
+  let term = compile_terminator fn ctxt (get_2_2 blk.term) in
+  term
 
 let compile_lbl_block fn lbl ctxt blk : elem =
   Asm.text (mk_lbl fn lbl) (compile_block fn ctxt blk)
@@ -364,14 +367,14 @@ let compile_lbl_block fn lbl ctxt blk : elem =
 *)
 let arg_loc (n : int) : operand =
   begin match n with
-  | 0 -> X86.Reg Rdi
-  | 1 -> X86.Reg Rsi
-  | 2 -> X86.Reg Rdx
-  | 3 -> X86.Reg Rcx
-  | 4 -> X86.Reg R08
-  | 5 -> X86.Reg R09
+  | 0 -> Reg Rdi
+  | 1 -> Reg Rsi
+  | 2 -> Reg Rdx
+  | 3 -> Reg Rcx
+  | 4 -> Reg R08
+  | 5 -> Reg R09
   (* relative to Rbp *)
-  | _ -> X86.Ind3 (Lit (Int64.of_int ((n-4) *8)), Rbp)
+  | _ -> Ind3 (Lit (Int64.of_int ((n-4) *8)), Rbp)
   end
 
 (* We suggest that you create a helper function that computes the
