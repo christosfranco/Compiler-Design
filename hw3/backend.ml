@@ -386,6 +386,9 @@ let arg_loc (n : int) : operand =
 
 *)
 let stack_layout (args : uid list) ((block, lbled_blocks):cfg) : layout =
+  let aux (b:block ) : uid list = (List.map fst b.insns) @ [(fst b.term)] in  (*auxilliary function used to get the list of all uids defined in a block*)
+  let blocks = block:: List.map snd lbled_blocks in                           (*get a list of all blocks*)
+  let uids = args @ List.concat (List.map aux blocks) in                      (*get a list of all uids*)
 failwith "stack_layout not implemented"
 
 (* The code for the entry-point of a function must do several things:
@@ -406,6 +409,7 @@ failwith "stack_layout not implemented"
 *)
 let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg }:fdecl) : prog =
   let rbp_frame_prefix = [Pushq, [Reg Rbp]] @ [Movq, [Reg Rsp; Reg Rbp]] @ [Subq, [Imm (Lit 8L); Reg Rsp]] in
+  let layout = stack_layout f_param f_cfg in
   (* rbp <- rsp *)
   (* rsp <- rsp - 8 * uidlength *)
   (* layout <- stacklayout *)
