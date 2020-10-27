@@ -293,12 +293,9 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     | Namedt of tid 
   *)
   | Alloca (ty) -> 
-    begin match ty with 
-    | I1 | I64 | Ptr _ ->
-      [Subq, [Imm (Lit 8L); Reg Rsp]] 
-      @ [Movq, [Reg Rsp; (lookup ctxt.layout uid)]]
-    | _ -> []
-    end
+    let size = Int64.of_int @@ size_ty ctxt.tdecls ty in
+          [(Subq, [(Imm (Lit (size))); (Reg Rsp)])] @
+          [(Movq, [Reg Rsp; (lookup ctxt.layout uid)])] 
   | Load (ty , op)              -> []
   | Store (ty , op1 , op2)      -> []
   | Icmp (cnd , ty , op1 , op2) -> []
@@ -408,7 +405,9 @@ failwith "stack_layout not implemented"
      to hold all of the local stack slots.
 *)
 let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg }:fdecl) : prog =
-  let rbp_frame_prefix = [Pushq, [Reg Rbp]] @ [Movq, [Reg Rsp; Reg Rbp]] @ [Subq, [Imm (Lit 8L); Reg Rsp]] in
+  let rbp_frame_prefix = [Pushq, [Reg Rbp]] @ 
+  [Movq, [Reg Rsp; Reg Rbp]] @ 
+  [Subq, [Imm (Lit 8L); Reg Rsp]] in
   let layout = stack_layout f_param f_cfg in
   (* rbp <- rsp *)
   (* rsp <- rsp - 8 * uidlength *)
