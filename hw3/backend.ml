@@ -429,14 +429,18 @@ let stack_layout (args : uid list) ((block, lbled_blocks):cfg) : layout =
      to hold all of the local stack slots.
 *)
 let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg }:fdecl) : prog =
-  let rbp_frame_prefix = [Pushq, [Reg Rbp]] @ 
-  [Movq, [Reg Rsp; Reg Rbp]] @ 
-  [Subq, [Imm (Lit 8L); Reg Rsp]] in
   let layout = stack_layout f_param f_cfg in
-  (* rbp <- rsp *)
-  (* rsp <- rsp - 8 * uidlength *)
-  (* layout <- stacklayout *)
-  failwith "compile_fdecl unimplemented"
+  let size = Int64.of_int (8 * List.length layout) in
+  let aux (index:int) (uid:uid) : ins = Movq, [lookup layout uid; arg_loc index] in
+  let rbp_frame_prefix = 
+    [Pushq, [Reg Rbp]] @ 
+    [Movq, [Reg Rsp; Reg Rbp]] @ 
+    [Subq, [Imm (Lit size); Reg Rsp]] @
+    List.mapi aux f_param in
+  let ctxt = {tdecls = tdecls; layout = layout} in
+  let entry_elem = Asm.text (name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
+  let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name lbl ctxt blk in
+  entry_elem :: List.map auxx (snd f_cfg)
 
 
 
