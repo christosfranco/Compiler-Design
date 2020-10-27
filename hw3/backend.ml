@@ -345,8 +345,9 @@ let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
    [blk]  - LLVM IR code for the block
 *)
 let compile_block (fn:string) (ctxt:ctxt) (blk:Ll.block) : ins list =
-  let term = compile_terminator fn ctxt (snd blk.term) in
-  List.concat(List.map (compile_insn ctxt) (blk.insns)) @ term
+  let compiled_body = List.concat(List.map (compile_insn ctxt) (blk.insns)) in
+  let compiled_terminator = compile_terminator fn ctxt (snd blk.term) in
+  compiled_body @ compiled_terminator
 
 let compile_lbl_block fn lbl ctxt blk : elem =
   Asm.text (mk_lbl fn lbl) (compile_block fn ctxt blk)
