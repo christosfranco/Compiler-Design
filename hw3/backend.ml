@@ -95,7 +95,7 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
 (*| Id id     -> Movq, [Reg R10;                                dest] (* Need to move into Reg R10*)*)
   | Const imm -> Movq, [Imm (Lit imm);                          dest]
   | Null      -> Movq, [Imm (Lit  0L);                          dest]
-  | Id    id  -> Movq, [lookup ctxt.layout id;                  dest]
+  | Id    id  -> Movq, [Reg10;                                  dest]
   | Gid   gid -> Leaq, [Ind3((Lbl (Platform.mangle gid)), Rip); dest]
   end 
 
