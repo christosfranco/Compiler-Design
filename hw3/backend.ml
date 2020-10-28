@@ -128,7 +128,55 @@ let compile_list_of_operands (ctxt:ctxt) (dest:X86.operand) (llop:Ll.operand): i
    needed). ]
 *)
 
+let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:((ty * Ll.operand) list))) : ins list =
+  (* Function to map the ty_op_list to regs *)
+  let ins_list = fun x (ty, op) -> 
+    (* Plac first six values in registers and next values (> 5) on the stack *)
+    let alloc_reg = function n ->  
+      begin match n with
+        | 0 -> Reg Rdi
+        | 1 -> Reg Rsi
+        | 2 -> Reg Rdx
+        | 3 -> Reg Rcx
+        | 4 -> Reg R08
+        | 5 -> Reg R09
+        | _ -> (Ind3 (Lit (Int64.of_int @@ (n - 6) * 8), Rsp))
+      end in
+    compile_list_of_operands ctxt (alloc_reg x) op in
 
+  (* Arguments *)
+  let arguments = (List.mapi ins_list ty_op_list |> List.flatten) in
+
+  (* The call *)
+  let call = (compile_list_of_operands ctxt (Reg R10) op) @ [(Callq, [Reg R10])] in
+
+  (* Moving return *)
+  let return_value = [(Movq, [Reg Rax; (lookup ctxt.layout uid)])] in
+
+  (* Using caller save register R11, remember to preserve by reverting*)
+  let generate_regs =  (Pushq, [Reg R11])::[] in
+  (* Preserving caller save reg R11 by reverting, Popq *)
+  let preserve_regs =  (Popq, [Reg R11])::[] in
+
+  (* Find the amount of space needed on the stack, first 6 are saved to regs *)
+  let stack_amount = (List.length ty_op_list - 6) in
+  (* If the stack is needed (stack_amount > 0 ) 
+  remember to subtract stack pointer before arguments
+  and add again after call is finished *)
+  if stack_amount > 0 then
+    generate_regs @
+    (* Substract stack pointer by amount needed, to make
+    space, each of size 8 *) 
+    [Subq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
+    arguments @ 
+    call @ 
+    (* Freeing stack space. 
+    Add stack pointer by amount of 8 * stack_amount, stack becomes smaller *)
+    [Addq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
+    preserve_regs @
+    return_value
+  else 
+    generate_regs @ arguments @ call @ preserve_regs @ return_value
 
 
 (* compiling getelementptr (gep)  ------------------------------------------- *)
@@ -319,7 +367,7 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     [Cmpq, [Reg Rdx; Reg Rcx] ] @
     [Set (compile_cnd cnd), [lookup ctxt.layout uid]] 
   
-  | Call (ty , op , ty_op_list) -> []
+  | Call (ty , op , ty_op_list) -> compile_call ctxt uid (ty, op, ty_op_list)
   | Bitcast (ty1 , op , ty2)    -> []
   | Gep (ty , op , oplist)      -> []
   end
