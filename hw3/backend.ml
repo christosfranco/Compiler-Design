@@ -402,7 +402,7 @@ let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
   | Ret (Void, _)           -> rbp_frame_suffix
   | Ret (_, Some operand)   -> (compile_operand ctxt (Reg Rax) operand) :: rbp_frame_suffix
   | Ret (_, _)              -> failwith "expected a return argument"
-  | Br lbl                  -> failwith "branch unimplemented"
+  | Br lbl                  -> [Jmp, [Imm (Lbl (mk_lbl fn lbl))]]
   | Cbr (op, lbl_1, lbl_2)  -> failwith "conditional branch unimplemented"
   end
 
