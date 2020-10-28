@@ -366,10 +366,15 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     [Movq, [Imm (Lit 0L) ; lookup ctxt.layout uid]] @ 
     [Cmpq, [Reg Rdx; Reg Rcx] ] @
     [Set (compile_cnd cnd), [lookup ctxt.layout uid]] 
-  
-  | Call (ty , op , ty_op_list) -> compile_call ctxt uid (ty, op, ty_op_list)
-  | Bitcast (ty1 , op , ty2)    -> []
-  | Gep (ty , op , oplist)      -> []
+  (* Call insn, see function compile_call *)
+  | Call (ty , op , ty_op_list) -> 
+    compile_call ctxt uid (ty, op, ty_op_list)
+  (* Bit cast, do basic operation *)
+  | Bitcast (ty1 , op , ty2)    -> 
+    (compile_list_of_operands ctxt (Reg Rcx) op) @
+    [Movq , [Reg Rcx ; lookup ctxt.layout uid]]
+  (* See function compile_gep *)
+  | Gep (ty , op , oplist)      -> failwith "gep not implemented"
   end
 
 
