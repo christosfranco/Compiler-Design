@@ -491,7 +491,7 @@ let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg
     [Subq, [Imm (Lit size); Reg Rsp]] @
     List.mapi aux f_param in
   let ctxt = {tdecls = tdecls; layout = layout} in
-  let entry_elem = Asm.text (name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
+  let entry_elem = Asm.gtext (name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
   let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name lbl ctxt blk in
   entry_elem :: List.map auxx (snd f_cfg)
 
