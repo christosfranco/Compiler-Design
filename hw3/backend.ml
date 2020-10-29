@@ -488,7 +488,7 @@ let stack_layout (args : uid list) ((block, lbled_blocks):cfg) : layout =
 let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg }:fdecl) : prog =
   let layout = stack_layout f_param f_cfg in
   let size = Int64.of_int (8 * List.length layout) in
-  let aux (index:int) (uid:uid) : ins = Movq, [lookup layout uid; arg_loc index] in
+  let aux (index:int) (uid:uid) : ins = Movq, [arg_loc index; lookup layout uid] in
   let rbp_frame_prefix = 
     [Pushq, [Reg Rbp]] @ 
     [Movq, [Reg Rsp; Reg Rbp]] @ 
@@ -497,6 +497,7 @@ let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg
   let ctxt = {tdecls = tdecls; layout = layout} in
   let entry_elem = Asm.gtext (Platform.mangle name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
   let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name lbl ctxt blk in
+  print_endline (string_of_prog (entry_elem :: List.map auxx (snd f_cfg)));
   entry_elem :: List.map auxx (snd f_cfg)
 
 
