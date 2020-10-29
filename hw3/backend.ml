@@ -95,7 +95,7 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
 (*| Id id     -> Movq, [Reg R10;                                dest] (* Need to move into Reg R10*)*)
   | Const imm -> Movq, [Imm (Lit imm);                          dest]
   | Null      -> Movq, [Imm (Lit  0L);                          dest]
-  | Id    id  -> Movq, [lookup (ctxt.layout) id;                                  dest]
+  | Id    id  -> Movq, [lookup (ctxt.layout) id;                dest]
   | Gid   gid -> Leaq, [Ind3((Lbl (Platform.mangle gid)), Rip); dest]
   end 
 
@@ -406,8 +406,8 @@ let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
   | Br lbl                  -> [Jmp, [Imm (Lbl (mk_lbl fn (Platform.mangle lbl)))]]
   | Cbr (op, lbl_1, lbl_2)  -> (compile_list_of_operands ctxt (Reg R10) op) @ 
                                [Cmpq, [(Imm (Lit (1L))); (Reg R10)]] @
-                               [J Eq, [(Imm (Lbl (Platform.mangle lbl_1)))]] @
-                               [Jmp, [(Imm (Lbl (Platform.mangle lbl_2)))]]
+                               [J Eq, [(Imm (Lbl (mk_lbl fn (Platform.mangle lbl_1))))]] @
+                               [Jmp, [(Imm (Lbl (mk_lbl fn (Platform.mangle lbl_2))))]]
   end
 
 
