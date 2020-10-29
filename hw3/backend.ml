@@ -101,12 +101,12 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
 
 let compile_list_of_operands (ctxt:ctxt) (dest:X86.operand) (llop:Ll.operand): ins list =
   begin match llop with
-    | Id id -> (Movq, [lookup ctxt.layout id; (Reg R10)])::
+    (*| Id id -> (Movq, [lookup ctxt.layout id; (Reg R10)])::
               (compile_operand ctxt dest llop)::[]
     | Gid gid -> (Leaq, [(Ind3((Lbl (Platform.mangle gid)), Rip)); (Reg R10)]):: 
         [compile_operand ctxt dest llop]
-    (* If none of the above, must be single operand, of either Null or Const *)
-    | _ -> (compile_operand ctxt dest llop)::[]
+    (* If none of the above, must be single operand, of either Null or Const *)*)
+    | _ -> [compile_operand ctxt dest llop]
   end
 (* compiling call  ---------------------------------------------------------- *)
 
