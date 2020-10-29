@@ -397,13 +397,17 @@ let mk_lbl (fn:string) (l:string) = fn ^ "." ^ l
    [fn] - the name of the function containing this terminator
 *)
 let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
-  let rbp_frame_suffix = [Movq, [Reg Rbp; Reg Rsp]] @ [Popq, [Reg Rbp]] @ [Retq, []] in
+  let rbp_frame_suffix = 
+  [Movq, [Reg Rbp; Reg Rsp]] @ [Popq, [Reg Rbp]] @ [Retq, []] in
   begin match t with 
   | Ret (Void, _)           -> rbp_frame_suffix
   | Ret (_, Some operand)   -> (compile_operand ctxt (Reg Rax) operand) :: rbp_frame_suffix
   | Ret (_, _)              -> failwith "expected a return argument"
-  | Br lbl                  -> [Jmp, [Imm (Lbl (mk_lbl fn lbl))]]
-  | Cbr (op, lbl_1, lbl_2)  -> failwith "conditional branch unimplemented"
+  | Br lbl                  -> [Jmp, [Imm (Lbl (mk_lbl fn (Platform.mangle lbl)))]]
+  | Cbr (op, lbl_1, lbl_2)  -> (compile_list_of_operands ctxt (Reg R10) op) @ 
+                               [Cmpq, [(Imm (Lit (1L))); (Reg R10)]] @
+                               [J Eq, [(Imm (Lbl (Platform.mangle lbl_1)))]] @
+                               [Jmp, [(Imm (Lbl (Platform.mangle lbl_2)))]]
   end
 
 
@@ -461,7 +465,7 @@ let uid_to_layout_entry (index:int) (uid:uid) : uid * X86.operand =
 
 let stack_layout (args : uid list) ((block, lbled_blocks):cfg) : layout =
   let block_to_uid (b:block ) : uid list = (List.map fst b.insns) @ [(fst b.term)] in   (*auxilliary function used to get the list of all uids defined in a block*)
-  let blocks = block:: List.map snd lbled_blocks in                                     (*get a list of all blocks*)
+  let blocks = block:: (List.map snd lbled_blocks) in                                     (*get a list of all blocks*)
   let uids = args @ List.concat (List.map block_to_uid blocks) in                       (*get a list of all uids*)
   List.mapi uid_to_layout_entry uids
 
@@ -491,7 +495,7 @@ let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg
     [Subq, [Imm (Lit size); Reg Rsp]] @
     List.mapi aux f_param in
   let ctxt = {tdecls = tdecls; layout = layout} in
-  let entry_elem = Asm.gtext (name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
+  let entry_elem = Asm.gtext (Platform.mangle name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
   let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name lbl ctxt blk in
   entry_elem :: List.map auxx (snd f_cfg)
 
