@@ -148,15 +148,15 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
   let arguments = (List.mapi ins_list ty_op_list |> List.flatten) in
 
   (* The call *)
-  let call = (compile_list_of_operands ctxt (Reg R10) op) @ [(Callq, [Reg R10])] in
+  let call = (compile_list_of_operands ctxt (Reg R10) op) @ [Callq, [Reg R10]] in
 
   (* Moving return *)
-  let return_value = [(Movq, [Reg Rax; (lookup ctxt.layout uid)])] in
+  let return_value = [Movq, [Reg Rax; (lookup ctxt.layout uid)]] in
 
   (* Using caller save register R11, remember to preserve by reverting*)
-  let generate_regs =  (Pushq, [Reg R11])::[] in
+  let generate_regs =  [Pushq, [Reg R11]] in
   (* Preserving caller save reg R11 by reverting, Popq *)
-  let preserve_regs =  (Popq, [Reg R11])::[] in
+  let preserve_regs =  [Popq, [Reg R11]] in
 
   (* Find the amount of space needed on the stack, first 6 are saved to regs *)
   let stack_amount = (List.length ty_op_list - 6) in
@@ -237,11 +237,19 @@ let rec size_ty (tdecls:(tid * ty) list) (t:Ll.ty) : int =
       in (4), but relative to the type f the sub-element picked out
       by the path so far
 *)
-let compile_gep (ctxt:ctxt) (op : Ll.ty * Ll.operand) (path: Ll.operand list) : ins list =
-failwith "compile_gep not implemented"
-
-
-
+let compile_gep (ctxt:ctxt) (ty_op: Ll.ty * Ll.operand) (path: Ll.operand list) : ins list =
+  (* 1. make sure that op is of pointer type *)
+  begin match ty_op with
+  | (Ptr pointer, operand) -> 
+    (* 2. base address *)
+    let base_addr = compile_list_of_operands ctxt (Reg R13) operand in
+    (* 3. First addr into arr of type t located at base_addr *)
+    let add_reg = (compile_list_of_operands ctxt (Reg R12) @@ List.nth path 0) 
+          @ [Imulq , [Imm (Lit (Int64.of_int @@ size_ty ctxt.tdecls pointer)); Reg R12]] in
+    let inc_reg = [Addq, [Reg R12; Reg R13]] in 
+    base_addr @ add_reg @ inc_reg
+  | _ -> []
+  end
 (* compiling instructions  -------------------------------------------------- *)
 
 (* The result of compiling a single LLVM instruction might be many x86
@@ -374,7 +382,9 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     (compile_list_of_operands ctxt (Reg Rcx) op) @
     [Movq , [Reg Rcx ; lookup ctxt.layout uid]]
   (* See function compile_gep *)
-  | Gep (ty , op , oplist)      -> failwith "gep not implemented"
+  | Gep (ty , op , oplist)      -> 
+    (compile_gep ctxt (ty, op) oplist) @ 
+    [Movq, [Reg R13; lookup ctxt.layout uid]] 
   end
 
 
