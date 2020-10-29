@@ -238,7 +238,11 @@ let rec size_ty (tdecls:(tid * ty) list) (t:Ll.ty) : int =
       by the path so far
 *)
 let compile_gep (ctxt:ctxt) (op : Ll.ty * Ll.operand) (path: Ll.operand list) : ins list =
-failwith "compile_gep not implemented"
+  let t = begin match (fst op) with 
+  | Ptr (x) -> x
+  | _ -> failwith "gep expected a pointer as type"
+  end in
+  compile_list_of_operands ctxt (Reg Rcx) (snd op)
 
 
 
@@ -374,7 +378,7 @@ let compile_insn (ctxt:ctxt) ((uid:uid), (i:Ll.insn)) : X86.ins list =
     (compile_list_of_operands ctxt (Reg Rcx) op) @
     [Movq , [Reg Rcx ; lookup ctxt.layout uid]]
   (* See function compile_gep *)
-  | Gep (ty , op , oplist)      -> failwith "gep not implemented"
+  | Gep (ty , op , oplist)      -> compile_gep ctxt (ty, op) oplist
   end
 
 
