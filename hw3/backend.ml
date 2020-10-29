@@ -106,7 +106,7 @@ let compile_list_of_operands (ctxt:ctxt) (dest:X86.operand) (llop:Ll.operand): i
     | Gid gid -> (Leaq, [(Ind3((Lbl (Platform.mangle gid)), Rip)); (Reg R10)]):: 
         [compile_operand ctxt dest llop]
     (* If none of the above, must be single operand, of either Null or Const *)*)
-    | _ -> [compile_operand ctxt dest llop]
+    | _ -> [compile_operand ctxt (Reg R10) llop; ( Movq, [(Reg R10);                dest])]
   end
 (* compiling call  ---------------------------------------------------------- *)
 
@@ -401,7 +401,7 @@ let compile_terminator (fn:string) (ctxt:ctxt) (t:Ll.terminator) : ins list =
   [Movq, [Reg Rbp; Reg Rsp]] @ [Popq, [Reg Rbp]] @ [Retq, []] in
   begin match t with 
   | Ret (Void, _)           -> rbp_frame_suffix
-  | Ret (_, Some operand)   -> (compile_operand ctxt (Reg Rax) operand) :: rbp_frame_suffix
+  | Ret (_, Some operand)   -> (compile_list_of_operands ctxt (Reg Rax) operand) @ rbp_frame_suffix
   | Ret (_, _)              -> failwith "expected a return argument"
   | Br lbl                  -> [Jmp, [Imm (Lbl (mk_lbl fn (Platform.mangle lbl)))]]
   | Cbr (op, lbl_1, lbl_2)  -> (compile_list_of_operands ctxt (Reg R10) op) @ 
@@ -488,12 +488,12 @@ let stack_layout (args : uid list) ((block, lbled_blocks):cfg) : layout =
 let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg }:fdecl) : prog =
   let layout = stack_layout f_param f_cfg in
   let size = Int64.of_int (8 * List.length layout) in
-  let aux (index:int) (uid:uid) : ins = Movq, [arg_loc index; lookup layout uid] in
+  let aux (index:int) (uid:uid) : ins list = [Movq, [arg_loc index; Reg R10]; Movq, [Reg R10; lookup layout uid] ]in
   let rbp_frame_prefix = 
     [Pushq, [Reg Rbp]] @ 
     [Movq, [Reg Rsp; Reg Rbp]] @ 
     [Subq, [Imm (Lit size); Reg Rsp]] @
-    List.mapi aux f_param in
+    List.concat (List.mapi aux f_param) in
   let ctxt = {tdecls = tdecls; layout = layout} in
   let entry_elem = Asm.gtext (Platform.mangle name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
   let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name lbl ctxt blk in
