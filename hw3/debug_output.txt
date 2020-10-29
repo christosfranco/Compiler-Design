@@ -1,0 +1,114 @@
+        .text
+        .globl  bar
+bar:
+        pushq   %rbp
+        movq    %rsp, %rbp
+        subq    $128, %rsp
+        movq    %rdi, -8(%rbp)
+        movq    %rsi, -16(%rbp)
+        movq    %rdx, -24(%rbp)
+        movq    %rcx, -32(%rbp)
+        movq    %r8 , -40(%rbp)
+        movq    %r9 , -48(%rbp)
+        movq    8(%rbp), -56(%rbp)
+        movq    16(%rbp), -64(%rbp)
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %rcx
+        movq    -16(%rbp), %r10
+        movq    -16(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -72(%rbp)
+        movq    -72(%rbp), %r10
+        movq    -72(%rbp), %rcx
+        movq    -24(%rbp), %r10
+        movq    -24(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -80(%rbp)
+        movq    -80(%rbp), %r10
+        movq    -80(%rbp), %rcx
+        movq    -32(%rbp), %r10
+        movq    -32(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -88(%rbp)
+        movq    -88(%rbp), %r10
+        movq    -88(%rbp), %rcx
+        movq    -40(%rbp), %r10
+        movq    -40(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -96(%rbp)
+        movq    -96(%rbp), %r10
+        movq    -96(%rbp), %rcx
+        movq    -48(%rbp), %r10
+        movq    -48(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -104(%rbp)
+        movq    -104(%rbp), %r10
+        movq    -104(%rbp), %rcx
+        movq    -56(%rbp), %r10
+        movq    -56(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -112(%rbp)
+        movq    -112(%rbp), %r10
+        movq    -112(%rbp), %rcx
+        movq    -64(%rbp), %r10
+        movq    -64(%rbp), %rdx
+        addq    %rcx, %rdx
+        movq    %rdx, -120(%rbp)
+        movq    -120(%rbp), %rax
+        movq    %rbp, %rsp
+        popq    %rbp
+        retq
+        .text
+        .globl  foo
+foo:
+        pushq   %rbp
+        movq    %rsp, %rbp
+        subq    $24, %rsp
+        movq    %rdi, -8(%rbp)
+        pushq   %r11
+        subq    $16, %rsp
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %rdi
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %rsi
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %rdx
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %rcx
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %r8 
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), %r9 
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), 0(%rsp)
+        movq    -8(%rbp), %r10
+        movq    -8(%rbp), 8(%rsp)
+        leaq    bar(%rip), %r10
+        leaq    bar(%rip), %r10
+        callq   *%r10
+        addq    $16, %rsp
+        popq    %r11
+        movq    %rax, -16(%rbp)
+        movq    -16(%rbp), %rax
+        movq    %rbp, %rsp
+        popq    %rbp
+        retq
+        .text
+        .globl  main
+main:
+        pushq   %rbp
+        movq    %rsp, %rbp
+        subq    $32, %rsp
+        movq    %rdi, -8(%rbp)
+        movq    %rsi, -16(%rbp)
+        pushq   %r11
+        movq    $3, %rdi
+        leaq    foo(%rip), %r10
+        leaq    foo(%rip), %r10
+        callq   *%r10
+        popq    %r11
+        movq    %rax, -24(%rbp)
+        movq    -24(%rbp), %rax
+        movq    %rbp, %rsp
+        popq    %rbp
+        retq
