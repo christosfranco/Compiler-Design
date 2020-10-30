@@ -100,14 +100,7 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
   end 
 
 let compile_list_of_operands (ctxt:ctxt) (dest:X86.operand) (llop:Ll.operand): ins list =
-  begin match llop with
-    (*| Id id -> (Movq, [lookup ctxt.layout id; (Reg R10)])::
-              (compile_operand ctxt dest llop)::[]
-    | Gid gid -> (Leaq, [(Ind3((Lbl (Platform.mangle gid)), Rip)); (Reg R10)]):: 
-        [compile_operand ctxt dest llop]
-    (* If none of the above, must be single operand, of either Null or Const *)*)
-    | _ -> [compile_operand ctxt (Reg R10) llop; ( Movq, [(Reg R10);                dest])]
-  end
+  [compile_operand ctxt (Reg R10) llop; (Movq, [(Reg R10); dest])]
 (* compiling call  ---------------------------------------------------------- *)
 
 (* You will probably find it helpful to implement a helper function that
@@ -153,20 +146,12 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
   (* Moving return *)
   let return_value = [Movq, [Reg Rax; (lookup ctxt.layout uid)]] in
 
-  (* Using caller save register R11, remember to preserve by reverting*)
-  let generate_regs =  [Pushq, [Reg R11]] in
-  (* Preserving caller save reg R11 by reverting, Popq *)
-  (* Dont need to preserve caller save as it is not used anywhere else in compiler
-  uncomment if R11 is used *)
-  (* let preserve_regs =  [Popq, [Reg R11]] in *)
-
   (* Find the amount of space needed on the stack, first 6 are saved to regs *)
   let stack_amount = (List.length ty_op_list - 6) in
   (* If the stack is needed (stack_amount > 0 ) 
   remember to subtract stack pointer before arguments
   and add again after call is finished *)
   if stack_amount > 0 then
-    generate_regs @
     (* Substract stack pointer by amount needed, to make
     space, each of size 8 *) 
     [Subq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
@@ -176,8 +161,7 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
     Add stack pointer by amount of 8 * stack_amount, stack becomes smaller *)
     [Addq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
     return_value
-  else 
-    generate_regs @ arguments @ call @  return_value
+  else arguments @ call @  return_value
 
 
 (* compiling getelementptr (gep)  ------------------------------------------- *)
