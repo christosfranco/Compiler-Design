@@ -156,7 +156,9 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
   (* Using caller save register R11, remember to preserve by reverting*)
   let generate_regs =  [Pushq, [Reg R11]] in
   (* Preserving caller save reg R11 by reverting, Popq *)
-  let preserve_regs =  [Popq, [Reg R11]] in
+  (* Dont need to preserve caller save as it is not used anywhere else in compiler
+  uncomment if R11 is used *)
+  (* let preserve_regs =  [Popq, [Reg R11]] in *)
 
   (* Find the amount of space needed on the stack, first 6 are saved to regs *)
   let stack_amount = (List.length ty_op_list - 6) in
@@ -173,10 +175,9 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
     (* Freeing stack space. 
     Add stack pointer by amount of 8 * stack_amount, stack becomes smaller *)
     [Addq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
-    preserve_regs @
     return_value
   else 
-    generate_regs @ arguments @ call @ preserve_regs @ return_value
+    generate_regs @ arguments @ call @  return_value
 
 
 (* compiling getelementptr (gep)  ------------------------------------------- *)
