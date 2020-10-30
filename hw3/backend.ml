@@ -238,26 +238,46 @@ let rec size_ty (tdecls:(tid * ty) list) (t:Ll.ty) : int =
       by the path so far
 *)
 let compile_gep (ctxt:ctxt) ((pointer, base_operand): Ll.ty * Ll.operand) (path: Ll.operand list) : ins list =
+  (*Returns a Constant operand of the size of t*)
   let size (t: Ll.ty) : X86.operand = Imm (Lit (Int64.of_int @@ size_ty ctxt.tdecls t)) in
-  let rec offset (types: Ll.ty list) (index: int): int = 
-  begin match (types, index) with 
+
+  (*Returns the sum of the first i typesizes of the list*)
+  let rec offset (types: Ll.ty list) (i: int): int = 
+  begin match (types, i) with 
   | (_, 0) -> 0
   | ([], _) -> 0
-  | (t::ts, _) -> size_ty ctxt.tdecls t + offset ts (index - 1)
+  | (t::ts, _) -> size_ty ctxt.tdecls t + offset ts (i - 1)
   end in
+
+  (*pointer should be of typ Ptr base_type*)
   let base_type = begin match pointer with 
   | Ptr x -> x
   | _ -> failwith "expected a pointer argument for gep"
   end in
-  let load_base_addr = compile_list_of_operands ctxt (Reg Rcx) base_operand in
+
+  (*Returns a list of instructions which add the correct ammount to the rcx*)
   let rec aux (ty:Ll.ty) (rest_of_path:Ll.operand list) : ins list = 
   begin match (ty, rest_of_path) with 
+    (*If path is empty we're done*)
   | (_, []) -> []
+
+    (*For a struct we add the size of the first n elements to rcx and use recursion*)
   | (Struct ts, (Const index)::ps) -> [Addq, [ Imm (Lit (Int64.of_int(offset ts (Int64.to_int index)))); Reg Rcx]] @ (aux (List.nth ts (Int64.to_int index)) ps)
+    
+    (*For an array we add the type size * operand and use recursion*)
   | (Array (_, t), p::ps) -> (compile_list_of_operands ctxt (Reg Rdx) @@ p) @ [Imulq , [size t; Reg Rdx]] @ [Addq, [Reg Rdx; Reg Rcx]] @ (aux t ps)
+
+    (*For a named type we look it up and try again*)
   | (Namedt id, _) -> (aux (lookup ctxt.tdecls id) rest_of_path)
+    
+    (*Everything else is invalid*)
   | _ -> failwith "expected array or struct for gep"
   end in
+
+  (*Load the base address into Rcx*)
+  let load_base_addr = compile_list_of_operands ctxt (Reg Rcx) base_operand in
+
+  (*Combine the base address with all the additions*)
   load_base_addr @ (aux (Array (1, base_type)) path)
 
 
