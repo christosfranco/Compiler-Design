@@ -517,7 +517,7 @@ let compile_fdecl (tdecls:(tid * ty) list) (name:string) ({ f_ty; f_param; f_cfg
     List.concat (List.mapi aux f_param) in
   let ctxt = {tdecls = tdecls; layout = layout} in
   let entry_elem = Asm.gtext (Platform.mangle name) (rbp_frame_prefix @ compile_block name ctxt (fst f_cfg)) in
-  let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name lbl ctxt blk in
+  let auxx ((lbl, blk): (lbl * block)) : elem = compile_lbl_block name (Platform.mangle lbl) ctxt blk in
   (*print_endline (string_of_prog (entry_elem :: List.map auxx (snd f_cfg)));*)
   entry_elem :: List.map auxx (snd f_cfg)
 
