@@ -239,6 +239,12 @@ let rec size_ty (tdecls:(tid * ty) list) (t:Ll.ty) : int =
 *)
 let compile_gep (ctxt:ctxt) ((pointer, base_operand): Ll.ty * Ll.operand) (path: Ll.operand list) : ins list =
   let size (t: Ll.ty) : X86.operand = Imm (Lit (Int64.of_int @@ size_ty ctxt.tdecls t)) in
+  let rec offset (types: Ll.ty list) (index: int): int = 
+  begin match (types, index) with 
+  | (_, 0) -> 0
+  | ([], _) -> 0
+  | (t::ts, _) -> size_ty ctxt.tdecls t + offset ts (index - 1)
+  end in
   let base_type = begin match pointer with 
   | Ptr x -> x
   | _ -> failwith "expected a pointer argument for gep"
@@ -247,21 +253,12 @@ let compile_gep (ctxt:ctxt) ((pointer, base_operand): Ll.ty * Ll.operand) (path:
   let rec aux (ty:Ll.ty) (rest_of_path:Ll.operand list) : ins list = 
   begin match (ty, rest_of_path) with 
   | (_, []) -> []
-  | (Struct ts, p::ps) -> []
+  | (Struct ts, (Const index)::ps) -> [Addq, [ Imm (Lit (Int64.of_int(offset ts (Int64.to_int index)))); Reg Rcx]] @ (aux (List.nth ts (Int64.to_int index)) ps)
   | (Array (_, t), p::ps) -> (compile_list_of_operands ctxt (Reg Rdx) @@ p) @ [Imulq , [size t; Reg Rdx]] @ [Addq, [Reg Rdx; Reg Rcx]] @ (aux t ps)
   | (Namedt id, _) -> (aux (lookup ctxt.tdecls id) rest_of_path)
-  | (Void, _) -> failwith "expected array or struct but got Void"
-  | (I1, _) -> failwith "expected array or struct but got I1"
-  | (I8, _) -> failwith "expected array or struct but got I8"
-  | (I64, _) -> failwith "expected array or struct but got I64"
-  | (Ptr _, _) -> failwith "expected array or struct but got Ptr"
-  | (Fun _, _) -> failwith "expected array or struct but got Fun"
+  | _ -> failwith "expected array or struct for gep"
   end in
   load_base_addr @ (aux (Array (1, base_type)) path)
-
-  (*let add_reg = (compile_list_of_operands ctxt (Reg Rdx) @@ p) @ [Imulq , [size t; Reg Rdx]] in
-  let inc_reg = [Addq, [Reg Rdx; Reg Rcx]] in 
-    base_addr @ add_reg @ inc_reg*)
 
 
 (* compiling instructions  -------------------------------------------------- *)
