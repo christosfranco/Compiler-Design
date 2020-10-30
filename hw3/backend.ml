@@ -100,14 +100,7 @@ let compile_operand (ctxt:ctxt) (dest:X86.operand) : Ll.operand -> ins =
   end 
 
 let compile_list_of_operands (ctxt:ctxt) (dest:X86.operand) (llop:Ll.operand): ins list =
-  begin match llop with
-    (*| Id id -> (Movq, [lookup ctxt.layout id; (Reg R10)])::
-              (compile_operand ctxt dest llop)::[]
-    | Gid gid -> (Leaq, [(Ind3((Lbl (Platform.mangle gid)), Rip)); (Reg R10)]):: 
-        [compile_operand ctxt dest llop]
-    (* If none of the above, must be single operand, of either Null or Const *)*)
-    | _ -> [compile_operand ctxt (Reg R10) llop; ( Movq, [(Reg R10);                dest])]
-  end
+  [compile_operand ctxt (Reg R10) llop; (Movq, [(Reg R10); dest])]
 (* compiling call  ---------------------------------------------------------- *)
 
 (* You will probably find it helpful to implement a helper function that
@@ -153,21 +146,12 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
   (* Moving return *)
   let return_value = [Movq, [Reg Rax; (lookup ctxt.layout uid)]] in
 
-  (* Using caller save register R11, remember to preserve by reverting*)
-  let generate_regs =  [Pushq, [Reg R11]] in
-  (* Preserving caller save reg R11 by reverting, Popq *)
-  (* The stack space does not seem to be needed in regards to the provided test
-  cases, so although this is needed for larger compilations, it is not needed
-  for this specific test scenario. *)
-  let preserve_regs =  [Popq, [Reg R11]] in
-
   (* Find the amount of space needed on the stack, first 6 are saved to regs *)
   let stack_amount = (List.length ty_op_list - 6) in
   (* If the stack is needed (stack_amount > 0 ) 
   remember to subtract stack pointer before arguments
   and add again after call is finished *)
   if stack_amount > 0 then
-    generate_regs @
     (* Substract stack pointer by amount needed, to make
     space, each of size 8 *) 
     [Subq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
@@ -178,11 +162,7 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
     [Addq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
     preserve_regs @
     return_value
-  else 
-    generate_regs @
-    arguments @ call @
-    preserve_regs @
-    return_value
+  else arguments @ call @  return_value
 
 
 (* compiling getelementptr (gep)  ------------------------------------------- *)
@@ -244,26 +224,46 @@ let rec size_ty (tdecls:(tid * ty) list) (t:Ll.ty) : int =
       by the path so far
 *)
 let compile_gep (ctxt:ctxt) ((pointer, base_operand): Ll.ty * Ll.operand) (path: Ll.operand list) : ins list =
+  (*Returns a Constant operand of the size of t*)
   let size (t: Ll.ty) : X86.operand = Imm (Lit (Int64.of_int @@ size_ty ctxt.tdecls t)) in
-  let rec offset (types: Ll.ty list) (index: int): int = 
-  begin match (types, index) with 
+
+  (*Returns the sum of the first i typesizes of the list*)
+  let rec offset (types: Ll.ty list) (i: int): int = 
+  begin match (types, i) with 
   | (_, 0) -> 0
   | ([], _) -> 0
-  | (t::ts, _) -> size_ty ctxt.tdecls t + offset ts (index - 1)
+  | (t::ts, _) -> size_ty ctxt.tdecls t + offset ts (i - 1)
   end in
+
+  (*pointer should be of typ Ptr base_type*)
   let base_type = begin match pointer with 
   | Ptr x -> x
   | _ -> failwith "expected a pointer argument for gep"
   end in
-  let load_base_addr = compile_list_of_operands ctxt (Reg Rcx) base_operand in
+
+  (*Returns a list of instructions which add the correct ammount to the rcx*)
   let rec aux (ty:Ll.ty) (rest_of_path:Ll.operand list) : ins list = 
   begin match (ty, rest_of_path) with 
+    (*If path is empty we're done*)
   | (_, []) -> []
+
+    (*For a struct we add the size of the first n elements to rcx and use recursion*)
   | (Struct ts, (Const index)::ps) -> [Addq, [ Imm (Lit (Int64.of_int(offset ts (Int64.to_int index)))); Reg Rcx]] @ (aux (List.nth ts (Int64.to_int index)) ps)
+    
+    (*For an array we add the type size * operand and use recursion*)
   | (Array (_, t), p::ps) -> (compile_list_of_operands ctxt (Reg Rdx) @@ p) @ [Imulq , [size t; Reg Rdx]] @ [Addq, [Reg Rdx; Reg Rcx]] @ (aux t ps)
+
+    (*For a named type we look it up and try again*)
   | (Namedt id, _) -> (aux (lookup ctxt.tdecls id) rest_of_path)
+    
+    (*Everything else is invalid*)
   | _ -> failwith "expected array or struct for gep"
   end in
+
+  (*Load the base address into Rcx*)
+  let load_base_addr = compile_list_of_operands ctxt (Reg Rcx) base_operand in
+
+  (*Combine the base address with all the additions*)
   load_base_addr @ (aux (Array (1, base_type)) path)
 
 
