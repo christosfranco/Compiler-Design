@@ -23,6 +23,14 @@
     raise (Lexer_error (Range.lex_range lexbuf,
         Printf.sprintf "Unexpected character: '%c'" c))
 
+
+(* 
+    CHECK all of the binary operations except +, -, *, and ==
+    CHECK the boolean type and values
+    default-initialized and implicitly-initialized array expressions and array global initializers
+    string literal expressions and global initializers
+    CHECK for loops
+ *)
   (* Lexing reserved words *)
   let reserved_words = [
   (* Keywords *)
@@ -36,6 +44,11 @@
   ("return", RETURN);
   ("var", VAR);
   ("global", GLOBAL);
+  (* For loops *)
+  ("for", FOR);
+  (* Bools *)
+  ("true", TRUE);
+  ("false", FALSE);
 
   (* Symbols *)
   ( ";", SEMI);
@@ -45,14 +58,33 @@
   ( "+", PLUS);
   ( "-", DASH);
   ( "*", STAR);
-  ( "=", EQ);
-  ( "==", EQEQ);
   ( "!", BANG);
   ( "~", TILDE);
   ( "(", LPAREN);
   ( ")", RPAREN);
   ( "[", LBRACKET);
   ( "]", RBRACKET);
+  (* Missing bin ops *)
+  ( "!=", NEQ);
+  ( "&", LAND);
+  ( "[&]", BAND);
+  ( "|", LOR);
+  ( "[|]", BOR);
+
+  (* Compare *)
+  ( "=", EQ);
+  ( "==", EQEQ);
+  ( "<", LESS);
+  ( "<=", LESSEQ);
+  ( ">", GREAT);
+  ( ">=", GREATEQ);
+
+  (* Shift ops *)
+  ( ">>", LRSHIFT);
+  ( ">>>", ARSHIFT);
+  ( "<<", LLSHIFT);
+  
+  ( "=>", ASSIGN);
   ]
 
 let (symbol_table : (string, Parser.token) Hashtbl.t) = Hashtbl.create 1024
@@ -110,6 +142,14 @@ let character = uppercase | lowercase
 let whitespace = ['\t' ' ']
 let digit = ['0'-'9']
 let hexdigit = ['0'-'9'] | ['a'-'f'] | ['A'-'F']
+
+(* Boolean can be these *)
+let boolean = "false" | "true"
+
+(* Arrayes *)
+let intarr = "int"(whitespace)*"[]"
+let stringarr = "string"(whitespace)*"[]"
+let boolarr = "bool"(whitespace)*"[]"
 
 rule token = parse
   | eof { EOF }

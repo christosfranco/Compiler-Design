@@ -160,7 +160,6 @@ let compile_call (ctxt:ctxt) (uid:uid) ((ty:(ty)) ,(op:Ll.operand), (ty_op_list:
     (* Freeing stack space. 
     Add stack pointer by amount of 8 * stack_amount, stack becomes smaller *)
     [Addq, [Imm (Lit (Int64.of_int @@ 8 * (stack_amount))); Reg Rsp]] @ 
-    preserve_regs @
     return_value
   else arguments @ call @  return_value
 

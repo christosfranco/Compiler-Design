@@ -6,16 +6,32 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 
 %}
 
+(* 
+    CHECK all of the binary operations except +, -, *, and ==
+    CHECK the boolean type and values
+    default-initialized and implicitly-initialized array expressions and array global initializers
+    string literal expressions and global initializers
+    CHECK for loops
+ *)
+
 /* Declare your tokens here. */
 %token EOF
 %token <int64>  INT
 %token NULL
 %token <string> STRING
 %token <string> IDENT
+%token TRUE /*bool*/
+%token FALSE /*bool*/
 
+/* array */
+%token <Ast.exp list> ARRAY
+
+/* Types */
+%token TBOOL    /*type bool*/
 %token TINT     /* int */
 %token TVOID    /* void */
 %token TSTRING  /* string */
+
 %token IF       /* if */
 %token ELSE     /* else */
 %token WHILE    /* while */
@@ -25,11 +41,17 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token COMMA    /* , */
 %token LBRACE   /* { */
 %token RBRACE   /* } */
+
+%token ASSIGN   /* Assignement */
+
+%token FOR      /* for loop*/
+
+/* Symbols */
 %token PLUS     /* + */
 %token DASH     /* - */
 %token STAR     /* * */
-%token EQEQ     /* == */
-%token EQ       /* = */
+
+/* Symbols */
 %token LPAREN   /* ( */
 %token RPAREN   /* ) */
 %token LBRACKET /* [ */
@@ -37,6 +59,27 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token TILDE    /* ~ */
 %token BANG     /* ! */
 %token GLOBAL   /* global */
+
+/* Compare */
+%token EQEQ     /* == */
+%token EQ       /* = */
+%token LESS     /* < */
+%token LESSEQ   /* <= */
+%token GREAT    /* > */
+%token GREATEQ  /* >= */
+
+/* SHift ops */
+%token LLSHIFT  /* << */
+%token LRSHIFT  /* >> */
+%token ARSHIFT  /* >>> */
+
+/* bin ops */
+%token NEQ      /* != */
+%token LAND     /* & */
+%token LOR      /* | */
+%token BAND     /* [&] */
+%token BOR      /* [|] */
+
 
 %left PLUS DASH
 %left STAR
@@ -77,9 +120,10 @@ decl:
 
 arglist:
   | l=separated_list(COMMA, pair(ty,IDENT)) { l }
-    
+
 ty:
   | TINT   { TInt }
+  | TBOOL  { TBool}
   | r=rtyp { TRef r } 
 
 %inline ret_ty:
@@ -95,6 +139,21 @@ ty:
   | DASH   { Sub }
   | STAR   { Mul }
   | EQEQ   { Eq }
+  /* Compare */
+  | NEQ { Neq }
+  | LAND { And }
+  | LOR { Or }
+  | LESS { Lt }
+  | LESSEQ { Lte }
+  | GREAT { Gt }
+  | GREATEQ { Gte }
+  /* Shifts */
+  | LLSHIFT { Shl }
+  | LRSHIFT { Shr }
+  | ARSHIFT { Sar }
+  /* Bin ops */
+  | BOR { IOr }
+  | BAND { IAnd }
 
 %inline uop:
   | DASH  { Neg }
@@ -121,6 +180,13 @@ exp:
   | e=exp LPAREN es=separated_list(COMMA, exp) RPAREN
                         { loc $startpos $endpos @@ Call (e,es) }
   | LPAREN e=exp RPAREN { e } 
+  /* Bool expressions */
+  | TRUE                { loc $startpos $endpos @@ CBool true }
+  | FALSE               { loc $startpos $endpos @@ CBool false }
+  /* Array */
+  /* | t=ty a=ARRAY            { loc $startpos $endpos @@ CArr t a  } */
+  | s=STRING          { loc $startpos $endpos @@ CStr s  }
+ 
 
 vdecl:
   | VAR id=IDENT EQ init=exp { (id, init) }
@@ -135,6 +201,14 @@ stmt:
   | RETURN e=exp SEMI   { loc $startpos $endpos @@ Ret(Some e) }
   | WHILE LPAREN e=exp RPAREN b=block  
                         { loc $startpos $endpos @@ While(e, b) } 
+  /* for statement */
+  | FOR 
+    LPAREN
+    d=separated_list(COMMA, vdecl)
+    SEMI e=option(exp) SEMI s=option(stmt)
+    RPAREN
+    b = block
+    { loc $startpos $endpos @@ For(d, e, s, b) }
 
 block:
   | LBRACE stmts=list(stmt) RBRACE { stmts }
