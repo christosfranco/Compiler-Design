@@ -49,6 +49,7 @@
   (* Bools *)
   ("true", TRUE);
   ("false", FALSE);
+
   ("new", NEW);
 
   (* Symbols *)
@@ -132,6 +133,9 @@ let (symbol_table : (string, Parser.token) Hashtbl.t) = Hashtbl.create 1024
 
   (* Lexing directives *)
   let lnum = ref 1
+  let mode = ref 0
+  let counter= ref 0
+  let scounter = ref 0
 }
 
 (* Declare your aliases (let foo = regex) and rules here. *)
@@ -155,6 +159,7 @@ rule token = parse
   | eof { EOF }
 
   | "/*" { start_lex := start_pos_of_lexbuf lexbuf; comments 0 lexbuf }
+  
   | '"' { reset_str(); start_lex := start_pos_of_lexbuf lexbuf; string false lexbuf }
   | '#' { let p = lexeme_start_p lexbuf in
           if p.pos_cnum - p.pos_bol = 0 then directive 0 lexbuf 
@@ -165,9 +170,26 @@ rule token = parse
   | digit+ | "0x" hexdigit+ { INT (Int64.of_string (lexeme lexbuf)) }
   | whitespace+ { token lexbuf }
   | newline { newline lexbuf; token lexbuf }
+  
+  
+  (* | intarr {mode:=1; TARRAY(multiarray (Ast.no_loc Ast.TInt) lexbuf)} 
+  | boolarr {mode:=1; TARRAY(multiarray (Ast.no_loc Ast.TBool) lexbuf)} 
+  | stringarr {mode:=1; TARRAY(multiarray (Ast.no_loc (Ast.TRef (Ast.no_loc Ast.RString))) lexbuf)} 
+   *)
+  | "int" {mode:=1; TINT}
+  | "string" {mode:=1; TSTRING}
+  | "bool" {mode:=1; TBOOL}
+  | "void" {mode:=1; TVOID}
+  
+  | "new" {mode:= 1; create_token lexbuf}
+  | "if" {mode:= 1; create_token lexbuf}
+  | "while" {mode:= 1; create_token lexbuf}
+  | "for" {mode:= 1; create_token lexbuf}
 
   | ';' | ',' | '{' | '}' | '+' | '-' | '*' | '=' | "==" 
-  | "!=" | '!' | '~' | '(' | ')' | '[' | ']' 
+  | "!=" | '!' | '~' | '(' | ')' | '[' | ']' | '&' | '|' 
+  | '<' | "<=" | '>' | ">=" | "<<" | ">>" | ">>>" | "[&]"
+  | "[|]"
     { create_token lexbuf }
 
   | _ as c { unexpected_char lexbuf c }
@@ -198,6 +220,7 @@ and directive state = parse
                 Printf.sprintf "Illegal directives")) }
   | _ { raise (Lexer_error (lex_long_range lexbuf, 
           Printf.sprintf "Illegal directives")) }
+
 
 and comments level = parse
   | "*/" { if level = 0 then token lexbuf
@@ -236,4 +259,5 @@ and escaped = parse
   | [^ '"' '\\' 't' 'n' '\'']
     { raise (Lexer_error (lex_long_range lexbuf,
         (Printf.sprintf "%s is an illegal escaped character constant" (lexeme lexbuf) ))) }
+
 

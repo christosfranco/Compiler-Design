@@ -163,6 +163,13 @@ ty:
 gexp:
   | t=rtyp NULL  { loc $startpos $endpos @@ CNull t }
   | i=INT      { loc $startpos $endpos @@ CInt i }
+  /* These have to be global expressions aswell */
+  /* Bool expressions */
+  | TRUE                { loc $startpos $endpos @@ CBool true }
+  | FALSE               { loc $startpos $endpos @@ CBool false }
+  | NEW t=ty LBRACKET? e1=exp RBRACKET 
+                        {loc $startpos $endpos @@ NewArr (t,e1)}
+  | s=STRING            { loc $startpos $endpos @@ CStr s  }
 
 lhs:  
   | id=IDENT            { loc $startpos $endpos @@ Id id }
@@ -170,23 +177,29 @@ lhs:
                         { loc $startpos $endpos @@ Index (e, i) }
 
 exp:
-  | i=INT               { loc $startpos $endpos @@ CInt i }
-  | t=rtyp NULL           { loc $startpos $endpos @@ CNull t }
-  | e1=exp b=bop e2=exp { loc $startpos $endpos @@ Bop (b, e1, e2) }
-  | u=uop e=exp         { loc $startpos $endpos @@ Uop (u, e) }
   | id=IDENT            { loc $startpos $endpos @@ Id id }
-  | e=exp LBRACKET i=exp RBRACKET
-                        { loc $startpos $endpos @@ Index (e, i) }
-  | e=exp LPAREN es=separated_list(COMMA, exp) RPAREN
-                        { loc $startpos $endpos @@ Call (e,es) }
-  | LPAREN e=exp RPAREN { e } 
+  | i=INT               { loc $startpos $endpos @@ CInt i }
+  | s=STRING            { loc $startpos $endpos @@ CStr s  }
+  | t=rtyp NULL         { loc $startpos $endpos @@ CNull t }
   /* Bool expressions */
   | TRUE                { loc $startpos $endpos @@ CBool true }
   | FALSE               { loc $startpos $endpos @@ CBool false }
+  
+  | e=exp LBRACKET i=exp RBRACKET
+                        { loc $startpos $endpos @@ Index (e, i) }
+
+
+  | e=exp LPAREN es=separated_list(COMMA, exp) RPAREN
+                        { loc $startpos $endpos @@ Call (e,es) }
+
+
   /* Array */
   | e=ty LPAREN es=ARRAY RPAREN    { loc $startpos $endpos @@ CArr (e, es) } 
-  | s=STRING          { loc $startpos $endpos @@ CStr s  }
   | NEW t=ty LBRACKET? e1=exp RBRACKET {loc $startpos $endpos @@ NewArr (t,e1)}
+
+  | e1=exp b=bop e2=exp { loc $startpos $endpos @@ Bop (b, e1, e2) }
+  | u=uop e=exp         { loc $startpos $endpos @@ Uop (u, e) }
+  | LPAREN e=exp RPAREN { e } 
  
 
 vdecl:
@@ -222,3 +235,4 @@ else_stmt:
   | (* empty *)       { [] }
   | ELSE b=block      { b }
   | ELSE ifs=if_stmt  { [ ifs ] }
+
