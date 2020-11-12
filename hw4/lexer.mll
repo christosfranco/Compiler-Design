@@ -172,10 +172,8 @@ rule token = parse
   | newline { newline lexbuf; token lexbuf }
   
   
-  (* | intarr {mode:=1; TARRAY(multiarray (Ast.no_loc Ast.TInt) lexbuf)} 
-  | boolarr {mode:=1; TARRAY(multiarray (Ast.no_loc Ast.TBool) lexbuf)} 
-  | stringarr {mode:=1; TARRAY(multiarray (Ast.no_loc (Ast.TRef (Ast.no_loc Ast.RString))) lexbuf)} 
-   *)
+  | "var" {mode:=1; VAR}
+  | "global" {mode:=1; GLOBAL}
   | "int" {mode:=1; TINT}
   | "string" {mode:=1; TSTRING}
   | "bool" {mode:=1; TBOOL}

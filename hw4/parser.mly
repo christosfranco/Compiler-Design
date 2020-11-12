@@ -167,7 +167,7 @@ gexp:
   /* Bool expressions */
   | TRUE                { loc $startpos $endpos @@ CBool true }
   | FALSE               { loc $startpos $endpos @@ CBool false }
-  | NEW t=ty LBRACKET? e1=exp RBRACKET 
+  | NEW t=ty LBRACKET? e1=gexp RBRACKET 
                         {loc $startpos $endpos @@ NewArr (t,e1)}
   | s=STRING            { loc $startpos $endpos @@ CStr s  }
 
@@ -194,8 +194,8 @@ exp:
 
 
   /* Array */
-  | e=ty LPAREN es=ARRAY RPAREN    { loc $startpos $endpos @@ CArr (e, es) } 
-  | NEW t=ty LBRACKET? e1=exp RBRACKET {loc $startpos $endpos @@ NewArr (t,e1)}
+  | e=ty es=ARRAY       { loc $startpos $endpos @@ CArr (e, es) } 
+  | NEW t=ty LBRACKET e1=exp RBRACKET {loc $startpos $endpos @@ NewArr (t,e1)}
 
   | e1=exp b=bop e2=exp { loc $startpos $endpos @@ Bop (b, e1, e2) }
   | u=uop e=exp         { loc $startpos $endpos @@ Uop (u, e) }
@@ -206,23 +206,18 @@ vdecl:
   | VAR id=IDENT EQ init=exp { (id, init) }
 
 stmt: 
-  | d=vdecl SEMI        { loc $startpos $endpos @@ Decl(d) }
   | p=lhs EQ e=exp SEMI { loc $startpos $endpos @@ Assn(p,e) }
+  | d=vdecl SEMI        { loc $startpos $endpos @@ Decl(d) }
+  | RETURN e=exp SEMI   { loc $startpos $endpos @@ Ret(Some e) }
+  | RETURN SEMI         { loc $startpos $endpos @@ Ret(None) }
   | e=exp LPAREN es=separated_list(COMMA, exp) RPAREN SEMI
                         { loc $startpos $endpos @@ SCall (e, es) }
   | ifs=if_stmt         { ifs }
-  | RETURN SEMI         { loc $startpos $endpos @@ Ret(None) }
-  | RETURN e=exp SEMI   { loc $startpos $endpos @@ Ret(Some e) }
+  /* for statement */
+  | FOR LPAREN d=separated_list(COMMA, vdecl) SEMI e=option(exp) SEMI s=option(stmt)
+    RPAREN b = block    { loc $startpos $endpos @@ For(d, e, s, b) }
   | WHILE LPAREN e=exp RPAREN b=block  
                         { loc $startpos $endpos @@ While(e, b) } 
-  /* for statement */
-  | FOR 
-    LPAREN
-    d=separated_list(COMMA, vdecl)
-    SEMI e=option(exp) SEMI s=option(stmt)
-    RPAREN
-    b = block
-    { loc $startpos $endpos @@ For(d, e, s, b) }
 
 block:
   | LBRACE stmts=list(stmt) RBRACE { stmts }

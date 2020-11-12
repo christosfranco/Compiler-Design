@@ -107,7 +107,7 @@ let string_of_ll_ast path ll_ast =
 let process_ll_ast path file ll_ast =
   let _ = if !print_ll_flag then print_ll file ll_ast in
 
-  (* Optionally interpret it using the reference interpreter. *)
+  (* Optionally interpret it using the cis341 reference interperter. *)
   let _ = if !interpret_ll then
       let result = interpret ll_ast [] in
       Printf.printf "Interpreter Result: %s\n" result
@@ -126,7 +126,7 @@ let process_ll_ast path file ll_ast =
         Platform.sh (Printf.sprintf "cat %s" dot_s_file) Platform.raise_error
       end
     end else begin
-      Platform.verb "* compiling with Compiler Design backend";
+      Platform.verb "* compiling with cis341 backend";
       let asm_ast = Backend.compile_prog ll_ast in
       let asm_str = X86.string_of_prog asm_ast in
       let _ = if !print_x86_flag then print_x86 dot_s_file asm_str in
@@ -149,7 +149,6 @@ let parse_oat_file filename =
   let lexbuf = read_file filename |> 
                Lexing.from_string
   in
-  Lexer.reset_lexbuf filename 0 lexbuf;  (* set the filename *)  
   try
     Parser.prog Lexer.token lexbuf
   with
