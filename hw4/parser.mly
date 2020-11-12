@@ -24,7 +24,7 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token FALSE /*bool*/
 
 /* array */
-%token <Ast.exp list> ARRAY
+%token <Ast.exp Ast.node list> ARRAY
 
 /* Types */
 %token TBOOL    /*type bool*/
@@ -42,7 +42,6 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token LBRACE   /* { */
 %token RBRACE   /* } */
 
-%token ASSIGN   /* Assignement */
 
 %token FOR      /* for loop*/
 
@@ -80,6 +79,7 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token BAND     /* [&] */
 %token BOR      /* [|] */
 
+%token NEW      /* new */
 
 %left PLUS DASH
 %left STAR
@@ -184,8 +184,9 @@ exp:
   | TRUE                { loc $startpos $endpos @@ CBool true }
   | FALSE               { loc $startpos $endpos @@ CBool false }
   /* Array */
-  /* | t=ty a=ARRAY            { loc $startpos $endpos @@ CArr t a  } */
+  | e=ty LPAREN es=ARRAY RPAREN    { loc $startpos $endpos @@ CArr (e, es) } 
   | s=STRING          { loc $startpos $endpos @@ CStr s  }
+  | NEW t=ty LBRACKET? e1=exp RBRACKET {loc $startpos $endpos @@ NewArr (t,e1)}
  
 
 vdecl:

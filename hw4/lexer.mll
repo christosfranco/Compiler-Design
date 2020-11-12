@@ -49,6 +49,7 @@
   (* Bools *)
   ("true", TRUE);
   ("false", FALSE);
+  ("new", NEW);
 
   (* Symbols *)
   ( ";", SEMI);
@@ -84,7 +85,6 @@
   ( ">>>", ARSHIFT);
   ( "<<", LLSHIFT);
   
-  ( "=>", ASSIGN);
   ]
 
 let (symbol_table : (string, Parser.token) Hashtbl.t) = Hashtbl.create 1024
