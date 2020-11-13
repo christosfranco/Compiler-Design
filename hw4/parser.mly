@@ -19,22 +19,24 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token <int64>  INT
 %token NULL
 %token <string> STRING
-%token <string> IDENT
-%token TRUE /*bool*/
-%token FALSE /*bool*/
-
 /* array */
 %token <Ast.exp Ast.node list> ARRAY
+%token TRUE /*bool*/
+%token FALSE /*bool*/
+%token <string> IDENT
+
 
 /* Types */
-%token TBOOL    /*type bool*/
 %token TINT     /* int */
 %token TVOID    /* void */
 %token TSTRING  /* string */
+%token TBOOL    /*type bool*/
 
 %token IF       /* if */
 %token ELSE     /* else */
 %token WHILE    /* while */
+%token FOR      /* for loop*/
+%token NEW      /* new */
 %token RETURN   /* return */
 %token VAR      /* var */
 %token SEMI     /* ; */
@@ -43,12 +45,15 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token RBRACE   /* } */
 
 
-%token FOR      /* for loop*/
 
 /* Symbols */
+%token STAR     /* * */
 %token PLUS     /* + */
 %token DASH     /* - */
-%token STAR     /* * */
+/* SHift ops */
+%token LLSHIFT  /* << */
+%token LRSHIFT  /* >> */
+%token ARSHIFT  /* >>> */
 
 /* Symbols */
 %token LPAREN   /* ( */
@@ -67,10 +72,6 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token GREAT    /* > */
 %token GREATEQ  /* >= */
 
-/* SHift ops */
-%token LLSHIFT  /* << */
-%token LRSHIFT  /* >> */
-%token ARSHIFT  /* >>> */
 
 /* bin ops */
 %token NEQ      /* != */
@@ -79,10 +80,7 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token BAND     /* [&] */
 %token BOR      /* [|] */
 
-%token NEW      /* new */
 
-%left PLUS DASH
-%left STAR
 
 %left BOR
 %left BAND
@@ -92,10 +90,12 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %left LESS LESSEQ GREAT GREATEQ
 %left LLSHIFT LRSHIFT ARSHIFT
 
+%left PLUS DASH
+%left STAR
+
 %nonassoc BANG
 %nonassoc TILDE
-%nonassoc LBRACKET
-%nonassoc LPAREN
+
 
 /* ---------------------------------------------------------------------- */
 
