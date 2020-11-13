@@ -83,6 +83,15 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 
 %left PLUS DASH
 %left STAR
+
+%left BOR
+%left BAND
+%left LOR
+%left LAND
+%left EQEQ NEQ
+%left LESS LESSEQ GREAT GREATEQ
+%left LLSHIFT LRSHIFT ARSHIFT
+
 %nonassoc BANG
 %nonassoc TILDE
 %nonassoc LBRACKET
@@ -112,6 +121,7 @@ stmt_top:
 prog:
   | p=list(decl) EOF  { p }
 
+/* This includes global decl as well as fdecl */
 decl:
   | GLOBAL name=IDENT EQ init=gexp SEMI
     { Gvdecl (loc $startpos $endpos { name; init }) }
@@ -121,15 +131,18 @@ decl:
 arglist:
   | l=separated_list(COMMA, pair(ty,IDENT)) { l }
 
+/* types */
 ty:
   | TINT   { TInt }
   | TBOOL  { TBool}
   | r=rtyp { TRef r } 
 
+/* return types */
 %inline ret_ty:
   | TVOID  { RetVoid }
   | t=ty   { RetVal t }
 
+/* reference types */
 %inline rtyp:
   | TSTRING { RString }
   | t=ty LBRACKET RBRACKET { RArray t }
@@ -192,7 +205,7 @@ exp:
   | e=exp LPAREN es=separated_list(COMMA, exp) RPAREN
                         { loc $startpos $endpos @@ Call (e,es) }
 
-
+  
   /* Array */
   | e=ty es=ARRAY       { loc $startpos $endpos @@ CArr (e, es) } 
   | NEW t=ty LBRACKET e1=exp RBRACKET {loc $startpos $endpos @@ NewArr (t,e1)}

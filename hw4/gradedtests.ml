@@ -22,7 +22,8 @@ let parse_test parse (compare : 'a -> 'a -> bool) (printer : 'a -> string) (code
 let exp_test code ast = parse_test Parser.exp_top eq_exp string_of_exp code ast
 
 let parse_consts =
-  [ ("parse consts test one", exp_test "bool[] null" (no_loc (CNull (RArray TBool))))
+  [ 
+    ("parse consts test one", exp_test "bool[] null" (no_loc (CNull (RArray TBool))))
   ; ("parse consts test two", exp_test "42" (no_loc (CInt 42L)))
   ; ("parse consts test three", exp_test "true" (no_loc (CBool true)))
   ; ("parse consts test four", exp_test "false" (no_loc (CBool false)))
