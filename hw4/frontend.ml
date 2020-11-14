@@ -407,7 +407,7 @@ let cmp_function_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
    in well-formed programs. (The constructors starting with C). 
 *)
 let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
-  failwith "cmp_global_ctxt unimplemented"
+  failwith "not implemented"
 
 (* Compile a function declaration in global context c. Return the LLVMlite cfg
    and a list of global declarations containing the string literals appearing
@@ -438,18 +438,18 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
 
 let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
   let gid = gensym "constant" in
-  
-    begin match e.elt with
-      | CNull rty -> failwith"something"
-      | CBool bool -> failwith"something"
+  failwith "cant run until cmp_global_ctxt"
+    (* begin match e.elt with
+      | CNull rty -> ((cmp_ty c, GNull), [gid, (cmp_ty c, GNull)])
+      | CBool bool -> 
         begin match bool with
-          | true -> failwith"something"
-          | false ->failwith"something"
+          | true -> ((cmp_ty c, GInt 1L), [gid, (cmp_ty c, GInt 1L)])
+          | false ->  ((cmp_ty c, GInt 0L), [gid, (cmp_ty c, GInt 0L)])
         end
-      | CInt i -> failwith"something"
+      | CInt i ->  ((cmp_ty c, GInt i), [gid, (cmp_ty c, GInt i)])
       | CStr s ->failwith "something"
       | _ -> failwith "not global init expression in  cmp gexp"
-    end
+    end *)
   
 (* Oat internals function context ------------------------------------------- *)
 let internals = [
@@ -485,7 +485,7 @@ let cmp_prog (p:Ast.prog) : Ll.prog =
     List.fold_right (fun d (fs, gs) ->
         match d with
         | Ast.Gvdecl { elt=gd } -> 
-           let ll_gd, gs' = cmp_gexp c gd.init in
+           let ll_gd, gs' = (cmp_gexp c gd.init) in
            (fs, (gd.name, ll_gd)::gs' @ gs)
         | Ast.Gfdecl fd ->
            let fdecl, gs' = cmp_fdecl c fd in
