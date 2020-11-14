@@ -304,8 +304,49 @@ let oat_alloc_array (t:Ast.ty) (size:Ll.operand) : Ll.ty * operand * stream =
 
 *)
 
+let cmp_binop bop ty op1 op2 :  insn =
+  begin match bop with
+    | Ast.Add -> Ll.Binop (Add, ty, op1, op2)
+    | Ast.Mul -> Ll.Binop (Mul, ty, op1, op2)
+    | Ast.Sub -> Ll.Binop (Sub, ty, op1, op2)
+    | Ast.And -> Ll.Binop (And, ty, op1, op2)
+    | Ast.IAnd -> Ll.Binop (And, ty, op1, op2) 
+    | Ast.IOr -> Ll.Binop(Or, ty, op1, op2)
+    | Ast.Or -> Ll.Binop(Or, ty, op1, op2)
+    | Ast.Shl -> Ll.Binop(Shl, ty, op1, op2)
+    | Ast.Shr -> Ll.Binop(Lshr, ty, op1, op2)
+    | Ast.Sar -> Ll.Binop(Ashr, ty, op1, op2)
+    | Ast.Eq  -> Ll.Icmp(Eq, ty, op1, op2)
+    | Ast.Neq -> Ll.Icmp(Ne, ty, op1, op2)
+    | Ast.Lt  -> Ll.Icmp(Slt, ty, op1, op2)
+    | Ast.Lte -> Ll.Icmp(Sle, ty, op1, op2)
+    | Ast.Gt  -> Ll.Icmp(Sgt, ty, op1, op2)
+    | Ast.Gte -> Ll.Icmp(Sge, ty, op1, op2)
+  end
+
 let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
-  failwith "cmp_exp unimplemented"
+  begin match exp.elt with
+    | Ast.Uop (uop,e) ->
+      let (ans_ty, op, code) = (cmp_exp c e) in
+      let ans_id = (gensym "unop") in
+      ((ans_ty, (Ll.Id ans_id), code >::I (ans_id, match uop with
+         | Ast.Neg -> Ll.Binop (Sub, ans_ty, Ll.Const (Int64.of_int 0), op)
+         | Ast.Lognot -> Ll.Icmp  (Eq, ans_ty, op, Ll.Const (if false then 1L else 0L))
+         | Ast.Bitnot  -> Ll.Binop (Xor, ans_ty, op, Ll.Const (Int64.of_int (-1))))))
+
+    | Ast.Bop (bop,e1,e2) -> 
+      let (ans_ty1, op1, code1) = (cmp_exp c e1) in
+      let (ans_ty2, op2, code2) = (cmp_exp c e2) in
+      let ans_id = (gensym "bop") in 
+      let my_ty = 
+        match bop with
+          | Ast.Add | Ast.Mul | Ast.Sub | Ast.Shl | Ast.Shr | Ast.Sar | Ast.IAnd | Ast.IOr -> 
+              (cmp_ty ( Ast.TInt))
+          | Ast.Eq | Ast.Neq | Ast.Lt | Ast.Lte | Ast.Gt | Ast.Gte | Ast.And | Ast.Or -> 
+              (cmp_ty ( Ast.TBool)) in
+        ((my_ty ), (Ll.Id ans_id), code1 >@ code2 >:: I (ans_id,
+                                                          (cmp_binop bop ans_ty1 op1 op2)))
+  end
 
 (* Compile a statement in context c with return typ rt. Return a new context, 
    possibly extended with new local bindings, and the instruction stream
@@ -396,8 +437,20 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
 *)
 
 let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
-  failwith "cmp_gexp not implemented"
-
+  let gid = gensym "constant" in
+  
+    begin match e.elt with
+      | CNull rty -> failwith"something"
+      | CBool bool -> failwith"something"
+        begin match bool with
+          | true -> failwith"something"
+          | false ->failwith"something"
+        end
+      | CInt i -> failwith"something"
+      | CStr s ->failwith "something"
+      | _ -> failwith "not global init expression in  cmp gexp"
+    end
+  
 (* Oat internals function context ------------------------------------------- *)
 let internals = [
     "oat_alloc_array",         Ll.Fun ([I64], Ptr I64)
