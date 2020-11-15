@@ -326,6 +326,13 @@ let cmp_binop bop ty op1 op2 :  insn =
 
 let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
   begin match exp.elt with
+    | Ast.CInt i -> ((I64), (Ll.Const i), [])
+    | Ast.CBool bool -> (I1, (Ll.Const (if bool then 1L else 0L)), [])
+    | Ast.CNull rty ->  ((cmp_rty rty), Ll.Null, [])
+    | Ast.CStr str -> let btcst = (gensym "bitcast") in
+      let str_id = gensym "str" in
+      (I8, (Id btcst), [G(str_id, (Array(1 + String.length str, I8), Ll.GString str))] >@
+                              [I(btcst, (Bitcast (Ptr (Array(1 + String.length str, I8)), Gid str_id, I8)))])
     | Ast.Uop (uop,e) ->
       let (ans_ty, op, code) = (cmp_exp c e) in
       let ans_id = (gensym "unop") in
