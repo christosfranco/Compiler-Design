@@ -306,22 +306,22 @@ let oat_alloc_array (t:Ast.ty) (size:Ll.operand) : Ll.ty * operand * stream =
 
 let cmp_binop bop ty op1 op2 :  insn =
   begin match bop with
-    | Ast.Add -> Ll.Binop (Add, ty, op1, op2)
-    | Ast.Mul -> Ll.Binop (Mul, ty, op1, op2)
-    | Ast.Sub -> Ll.Binop (Sub, ty, op1, op2)
-    | Ast.And -> Ll.Binop (And, ty, op1, op2)
+    | Ast.Add  -> Ll.Binop (Add, ty, op1, op2)
+    | Ast.Mul  -> Ll.Binop (Mul, ty, op1, op2)
+    | Ast.Sub  -> Ll.Binop (Sub, ty, op1, op2)
+    | Ast.And  -> Ll.Binop (And, ty, op1, op2)
     | Ast.IAnd -> Ll.Binop (And, ty, op1, op2) 
-    | Ast.IOr -> Ll.Binop(Or, ty, op1, op2)
-    | Ast.Or -> Ll.Binop(Or, ty, op1, op2)
-    | Ast.Shl -> Ll.Binop(Shl, ty, op1, op2)
-    | Ast.Shr -> Ll.Binop(Lshr, ty, op1, op2)
-    | Ast.Sar -> Ll.Binop(Ashr, ty, op1, op2)
-    | Ast.Eq  -> Ll.Icmp(Eq, ty, op1, op2)
-    | Ast.Neq -> Ll.Icmp(Ne, ty, op1, op2)
-    | Ast.Lt  -> Ll.Icmp(Slt, ty, op1, op2)
-    | Ast.Lte -> Ll.Icmp(Sle, ty, op1, op2)
-    | Ast.Gt  -> Ll.Icmp(Sgt, ty, op1, op2)
-    | Ast.Gte -> Ll.Icmp(Sge, ty, op1, op2)
+    | Ast.IOr  -> Ll.Binop (Or, ty, op1, op2)
+    | Ast.Or   -> Ll.Binop (Or, ty, op1, op2)
+    | Ast.Shl  -> Ll.Binop (Shl, ty, op1, op2)
+    | Ast.Shr  -> Ll.Binop (Lshr, ty, op1, op2)
+    | Ast.Sar  -> Ll.Binop (Ashr, ty, op1, op2)
+    | Ast.Eq   -> Ll.Icmp  (Eq, ty, op1, op2)
+    | Ast.Neq  -> Ll.Icmp  (Ne, ty, op1, op2)
+    | Ast.Lt   -> Ll.Icmp  (Slt, ty, op1, op2)
+    | Ast.Lte  -> Ll.Icmp  (Sle, ty, op1, op2)
+    | Ast.Gt   -> Ll.Icmp  (Sgt, ty, op1, op2)
+    | Ast.Gte  -> Ll.Icmp  (Sge, ty, op1, op2)
   end
 
 let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
@@ -406,8 +406,11 @@ let cmp_function_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
    Only a small subset of OAT expressions can be used as global initializers
    in well-formed programs. (The constructors starting with C). 
 *)
+
+(* type t = (Ast.id * (Ll.ty * Ll.operand)) list *)
+
 let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
-  failwith "not implemented"
+  cmp_function_ctxt c p
 
 (* Compile a function declaration in global context c. Return the LLVMlite cfg
    and a list of global declarations containing the string literals appearing
@@ -422,7 +425,30 @@ let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
  *)
 
 let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) list =
-  failwith "cmp_fdecl not implemented"
+  (* 1 allocate stack space *)
+  let alloca_args2  (x: ty * id) =
+    begin match x with
+      | (x, y) ->
+        let uid = gensym "alloca" in
+        I(uid, (Alloca (cmp_ty x)))::I(gensym "alloca", (Store ((cmp_ty x), (Id y), (Id uid))))::[]
+    end
+  in
+  let args = f.elt.args in
+  let args_elt2 =  (List.map alloca_args2 args) in
+
+
+  let new_c = c in
+  (* 4. *)
+  let new_ctxt, strm = cmp_block new_c (cmp_ret_ty f.elt.frtyp) f.elt.body in
+  (* 5. *)
+  let func_cfg, func_llglobals = 
+  cfg_of_stream (List.rev (List.flatten args_elt2) >@ strm) in
+  failwith "not implemented"
+  (* let gid = name.elt in
+  let fdecl ={ frty : ret_ty; fname : id; args : (ty * id) list; body : block } in
+  let gdecl =  { name : id; init : exp node } in
+  (fdecl, (gid, gdecl)) *)
+
 
 (* Compile a global initializer, returning the resulting LLVMlite global
    declaration, and a list of additional global declarations.
@@ -438,18 +464,17 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
 
 let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
   let gid = gensym "constant" in
-  failwith "cant run until cmp_global_ctxt"
-    (* begin match e.elt with
-      | CNull rty -> ((cmp_ty c, GNull), [gid, (cmp_ty c, GNull)])
+    begin match e.elt with
+      | CNull rty -> ((cmp_rty rty, GNull), [gid, (cmp_rty rty, GNull)])
       | CBool bool -> 
         begin match bool with
-          | true -> ((cmp_ty c, GInt 1L), [gid, (cmp_ty c, GInt 1L)])
-          | false ->  ((cmp_ty c, GInt 0L), [gid, (cmp_ty c, GInt 0L)])
+          | true -> ((I1, GInt 1L), [gid, (I1, GInt 1L)])
+          | false ->  ((I1, GInt 0L), [gid, (I1, GInt 0L)])
         end
-      | CInt i ->  ((cmp_ty c, GInt i), [gid, (cmp_ty c, GInt i)])
+      | CInt i ->  ((I64, GInt i), [gid, (I64, GInt i)])
       | CStr s ->failwith "something"
       | _ -> failwith "not global init expression in  cmp gexp"
-    end *)
+    end
   
 (* Oat internals function context ------------------------------------------- *)
 let internals = [
