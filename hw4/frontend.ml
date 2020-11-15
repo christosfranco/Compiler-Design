@@ -383,8 +383,25 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
  *)
 
 let rec cmp_stmt (c:Ctxt.t) (rt:Ll.ty) (stmt:Ast.stmt node) : Ctxt.t * stream =
-  failwith "cmp_stmt not implemented"
-
+  begin match stmt.elt with
+    | Ast.Ret t -> 
+      begin match t with
+        | Some exp -> 
+          begin match rt with
+            | Void -> failwith "retval return type for void function"
+            | _ -> let (ty,op,str) = (cmp_exp c exp) in
+              begin match op with
+                | Id i -> c, str >@  [T(Ll.Ret (ty, Some op))]
+                | _ ->  c, str >@ [T(Ll.Ret(ty, Some op))]
+              end
+          end
+        | None -> 
+          begin match rt with
+            | Void -> let t = Ll.Ret(Ll.Void, None) in c, [T t]
+            |  _ -> failwith "void return type for retval function"
+          end
+      end
+  end
 (* Compile a series of statements *)
 and cmp_block (c:Ctxt.t) (rt:Ll.ty) (stmts:Ast.block) : Ctxt.t * stream =
   List.fold_left (fun (c, code) s -> 
@@ -450,7 +467,7 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
   (* 5. *)
   let func_cfg, func_llglobals = 
   cfg_of_stream (List.rev (List.flatten args_elt2) >@ strm) in
-  failwith "not implemented"
+  failwith "not implemented fdecl"
   (* let gid = name.elt in
   let fdecl ={ frty : ret_ty; fname : id; args : (ty * id) list; body : block } in
   let gdecl =  { name : id; init : exp node } in
@@ -472,14 +489,14 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
 let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
   let gid = gensym "constant" in
     begin match e.elt with
-      | CNull rty -> ((cmp_rty rty, GNull), [gid, (cmp_rty rty, GNull)])
-      | CBool bool -> 
+      | Ast.CNull rty -> ((cmp_rty rty, GNull), [gid, (cmp_rty rty, GNull)])
+      | Ast.CBool bool -> 
         begin match bool with
           | true -> ((I1, GInt 1L), [gid, (I1, GInt 1L)])
           | false ->  ((I1, GInt 0L), [gid, (I1, GInt 0L)])
         end
-      | CInt i ->  ((I64, GInt i), [gid, (I64, GInt i)])
-      | CStr s ->failwith "something"
+      | Ast.CInt i ->  ((I64, GInt i), [gid, (I64, GInt i)])
+      | Ast.CStr s ->failwith "something"
       | _ -> failwith "not global init expression in  cmp gexp"
     end
   
