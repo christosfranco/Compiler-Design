@@ -434,7 +434,16 @@ let cmp_function_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
 (* type t = (Ast.id * (Ll.ty * Ll.operand)) list *)
 
 let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
-  cmp_function_ctxt c p
+  List.fold_left (fun c -> function
+      | Ast.Gvdecl { elt={ name; init } } ->
+        begin match init.elt with
+          | Ast.CInt _ | Ast.CBool _ | Ast.CNull _ | Ast.CStr _ ->
+            let ty , _ , _=  cmp_exp c init in
+            Ctxt.add c name (ty, Gid name)
+          | _ -> failwith "not constructor C in cmp_global_ctxt"
+        end
+      | _ -> c
+    ) c p 
 
 (* Compile a function declaration in global context c. Return the LLVMlite cfg
    and a list of global declarations containing the string literals appearing
@@ -486,7 +495,7 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
   (* 4. *)
   let new_ctxt, strm = cmp_block new_c (cmp_ret_ty f.elt.frtyp) f.elt.body in
   (* 5. *)
-  let func_cfg, func_llglobals = 
+  let func_cfg, gdecl = 
   cfg_of_stream (List.rev (List.flatten args_elt2) >@ strm) in
 
   (* split args into ty and id *)
@@ -498,7 +507,7 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
   let f_param = List.map args_id args in
 
   let fdecl = { f_ty = func_fty; f_param = f_param; f_cfg = func_cfg } in
-  (fdecl, (func_llglobals)) 
+  (fdecl, (gdecl))
 
 (* type fdecl = { f_ty : fty; f_param : uid list; f_cfg : cfg } *)
 
