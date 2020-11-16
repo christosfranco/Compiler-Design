@@ -458,8 +458,6 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
     end
   in
   let args = f.elt.args in
-  let args_elt2 =  (List.map alloca_args2 args) in
-
 
   (* 3. *)
   let uid_lst (i: int) (x: elt list) =
@@ -479,19 +477,30 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
     end
   in   
 
+  let args_elt2 =  (List.map alloca_args2 args) in
+
   let new_c = List.fold_left update_ctxt c (List.mapi uid_lst args_elt2) in
 
+  (* type t = (Ast.id * (Ll.ty * Ll.operand)) list *)
   (* let new_c = c in *)
   (* 4. *)
   let new_ctxt, strm = cmp_block new_c (cmp_ret_ty f.elt.frtyp) f.elt.body in
   (* 5. *)
   let func_cfg, func_llglobals = 
   cfg_of_stream (List.rev (List.flatten args_elt2) >@ strm) in
-  failwith "not implemented fdecl"
-  (* let gid = name.elt in
-  let fdecl ={ frty : ret_ty; fname : id; args : (ty * id) list; body : block } in
-  let gdecl =  { name : id; init : exp node } in
-  (fdecl, (gid, gdecl)) *)
+
+  (* split args into ty and id *)
+  let arg_ty (x: ty * id) = cmp_ty (fst x) in
+  let args_id  (x: ty * id) = snd x in
+
+  let arg_tys = List.map arg_ty args in
+  let func_fty = (arg_tys, (cmp_ret_ty f.elt.frtyp)) in
+  let f_param = List.map args_id args in
+
+  let fdecl = { f_ty = func_fty; f_param = f_param; f_cfg = func_cfg } in
+  (fdecl, (func_llglobals)) 
+
+(* type fdecl = { f_ty : fty; f_param : uid list; f_cfg : cfg } *)
 
 
 (* Compile a global initializer, returning the resulting LLVMlite global
