@@ -435,15 +435,15 @@ let cmp_function_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
 
 let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
   List.fold_left (fun c -> function
-      | Ast.Gvdecl { elt={ name; init } } ->
-        begin match init.elt with
-          | Ast.CInt _ | Ast.CBool _ | Ast.CNull _ | Ast.CStr _ ->
-            let ty , _ , _=  cmp_exp c init in
-            Ctxt.add c name (ty, Gid name)
-          | _ -> failwith "not constructor C in cmp_global_ctxt"
-        end
-      | _ -> c
-    ) c p 
+    | Ast.Gvdecl { elt={ name; init } } ->
+      begin match init.elt with
+        | Ast.CInt _ | Ast.CBool _ | Ast.CNull _ | Ast.CStr _ ->
+          let ty , _ , _=  cmp_exp c init in
+          Ctxt.add c name (ty, Gid name)
+        | _ -> failwith "not constructor C in cmp_global_ctxt"
+      end
+    | _ -> c
+  ) c p 
 
 (* Compile a function declaration in global context c. Return the LLVMlite cfg
    and a list of global declarations containing the string literals appearing
@@ -523,7 +523,16 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
    - OAT arrays are always handled via pointers. A global array of arrays will
      be an array of pointers to arrays emitted as additional global declarations.
 *)
-
+(* type gdecl = ty * ginit *)
+(* type ginit =
+| GNull
+| GGid of gid
+| GInt of int64
+| GString of string
+| GArray of (ty * ginit) list
+| GStruct of (ty * ginit) list
+| GBitcast of ty * ginit * ty
+ *)
 let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
   let gid = gensym "constant" in
     begin match e.elt with
@@ -534,7 +543,12 @@ let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
           | false ->  ((I1, GInt 0L), [gid, (I1, GInt 0L)])
         end
       | Ast.CInt i ->  ((I64, GInt i), [gid, (I64, GInt i)])
-      | Ast.CStr s ->failwith "something"
+      | Ast.CStr s -> 
+        let ginit = GGid gid in
+        let ty    = Ptr (Array(1 + String.length s, I8)) in
+        let gid   = gid in
+        let gdecl = (ty,ginit) in
+          ( gdecl , [( gid , gdecl )])
       | _ -> failwith "not global init expression in  cmp gexp"
     end
   
