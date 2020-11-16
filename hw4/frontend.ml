@@ -461,7 +461,27 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
   let args_elt2 =  (List.map alloca_args2 args) in
 
 
-  let new_c = c in
+  (* 3. *)
+  let uid_lst (i: int) (x: elt list) =
+    begin match (List.nth x 0) with
+      | I (uid, y) ->
+        begin match (List.nth args i) with
+          | (typ, id) -> (id, uid, typ) 
+        end
+      | _ -> failwith "not an I"
+    end in
+
+    (* let add (c:t) (id:id) (bnd:Ll.ty * Ll.operand) : t = (id,bnd)::c *)
+  (* 3. add bindings  *)
+  let update_ctxt c (x: Ast.id * string * Ast.ty) =
+    begin match x with 
+      | (id, str, ty) -> Ctxt.add c id (cmp_ty ty, Id str)
+    end
+  in   
+
+  let new_c = List.fold_left update_ctxt c (List.mapi uid_lst args_elt2) in
+
+  (* let new_c = c in *)
   (* 4. *)
   let new_ctxt, strm = cmp_block new_c (cmp_ret_ty f.elt.frtyp) f.elt.body in
   (* 5. *)
