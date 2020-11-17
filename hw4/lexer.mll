@@ -92,6 +92,8 @@ let (symbol_table : (string, Parser.token) Hashtbl.t) = Hashtbl.create 1024
   let _ =
     List.iter (fun (str,t) -> Hashtbl.add symbol_table str t) reserved_words
 
+  let maybe_char = ref '0'
+
   let create_token lexbuf =
     let str = lexeme lexbuf in 
     try (Hashtbl.find symbol_table str) 
@@ -157,23 +159,17 @@ let boolarr = "bool"(whitespace)*"[]"
 
 rule token = parse
   | eof { EOF }
-
   | "/*" { start_lex := start_pos_of_lexbuf lexbuf; comments 0 lexbuf }
-  
   | '"' { reset_str(); start_lex := start_pos_of_lexbuf lexbuf; string false lexbuf }
   | '#' { let p = lexeme_start_p lexbuf in
           if p.pos_cnum - p.pos_bol = 0 then directive 0 lexbuf 
           else raise (Lexer_error (lex_long_range lexbuf,
             Printf.sprintf "# can only be the 1st char in a line.")) }
-
   | lowercase (digit | character | '_')* { create_token lexbuf }
   | digit+ | "0x" hexdigit+ { INT (Int64.of_string (lexeme lexbuf)) }
   | whitespace+ { token lexbuf }
   | newline { newline lexbuf; token lexbuf }
-  
-  
-  | "var" {mode:=1; VAR}
-  | "global" {mode:=1; GLOBAL}
+
   | "int" {mode:=1; TINT}
   | "string" {mode:=1; TSTRING}
   | "bool" {mode:=1; TBOOL}
@@ -185,9 +181,9 @@ rule token = parse
   | "for" {mode:= 1; create_token lexbuf}
 
   | ';' | ',' | '{' | '}' | '+' | '-' | '*' | '=' | "==" 
-  | "!=" | '!' | '~' | '(' | ')' | '[' | ']' | '&' | '|' 
-  | '<' | "<=" | '>' | ">=" | "<<" | ">>" | ">>>" | "[&]"
-  | "[|]"
+  | "!=" | '!' | '~' | '(' | ')' | '[' | ']'
+  | '<' | "<=" | '>' | ">=" | "=>" | '&' | '|' | '.' 
+  | "[|]" | "[&]" | "<<" | ">>" | ">>>"
     { create_token lexbuf }
 
   | _ as c { unexpected_char lexbuf c }

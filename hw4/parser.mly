@@ -20,11 +20,11 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token NULL
 %token <string> STRING
 /* array */
-%token <Ast.exp Ast.node list> ARRAY
 %token TRUE /*bool*/
 %token FALSE /*bool*/
 %token <string> IDENT
 
+/* %token <Ast.ty> TARRAY    */
 
 /* Types */
 %token TINT     /* int */
@@ -95,8 +95,8 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 
 %nonassoc BANG
 %nonassoc TILDE
-
-
+%nonassoc LBRACKET
+%nonassoc LPAREN
 /* ---------------------------------------------------------------------- */
 
 %start prog
@@ -134,8 +134,9 @@ arglist:
 /* types */
 ty:
   | TINT   { TInt }
-  | TBOOL  { TBool}
   | r=rtyp { TRef r } 
+  | LPAREN t=ty RPAREN { t } 
+  | TBOOL  { TBool}
 
 /* return types */
 %inline ret_ty:
@@ -182,6 +183,8 @@ gexp:
   | FALSE               { loc $startpos $endpos @@ CBool false }
   | NEW t=ty LBRACKET? e1=gexp RBRACKET 
                         {loc $startpos $endpos @@ NewArr (t,e1)}
+  | NEW t=ty LBRACKET RBRACKET LBRACE cs=separated_list(COMMA, gexp) RBRACE
+               { loc $startpos $endpos @@ CArr (t, cs) }
   | s=STRING            { loc $startpos $endpos @@ CStr s  }
 
 lhs:  
@@ -207,9 +210,9 @@ exp:
 
   
   /* Array */
-  | e=ty es=ARRAY       { loc $startpos $endpos @@ CArr (e, es) } 
+  | NEW t=ty LBRACKET RBRACKET LBRACE cs=separated_list(COMMA, exp) RBRACE
+                        { loc $startpos $endpos @@ CArr (t, cs) }
   | NEW t=ty LBRACKET e1=exp RBRACKET {loc $startpos $endpos @@ NewArr (t,e1)}
-
   | e1=exp b=bop e2=exp { loc $startpos $endpos @@ Bop (b, e1, e2) }
   | u=uop e=exp         { loc $startpos $endpos @@ Uop (u, e) }
   | LPAREN e=exp RPAREN { e } 
@@ -231,6 +234,7 @@ stmt:
     RPAREN b = block    { loc $startpos $endpos @@ For(d, e, s, b) }
   | WHILE LPAREN e=exp RPAREN b=block  
                         { loc $startpos $endpos @@ While(e, b) } 
+
 
 block:
   | LBRACE stmts=list(stmt) RBRACE { stmts }
