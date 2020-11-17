@@ -324,6 +324,7 @@ let cmp_binop bop ty op1 op2 :  insn =
     | Ast.Gte  -> Ll.Icmp  (Sge, ty, op1, op2)
   end
 
+
 let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
   begin match exp.elt with
     | Ast.CInt i -> ((I64), (Ll.Const i), [])
@@ -363,6 +364,10 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
           t, Id ans_id, [I(ans_id, Load(Ptr t, op))]
         | _ -> failwith "Id is not of Ptr type"
       end
+    | Ast.NewArr (elt_ty, e1) ->    
+      let _, size_op, size_code = cmp_exp c e1 in
+      let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
+      arr_ty, arr_op, size_code >@ alloc_code
   end
 
 (* Compile a statement in context c with return typ rt. Return a new context, 
@@ -427,7 +432,9 @@ type elt =
       let new_ctxt = Ctxt.add c id (Ptr ty, Id res_id) in
       new_ctxt, code 
           >:: E(res_id, Alloca ty)
-          >:: I("",     Store (ty, op, Id res_id))      
+          >:: I("",     Store (ty, op, Id res_id))
+    
+      
     | Ast.If (guard, st1, st2) -> 
       let guard_ty, guard_op, guard_code = cmp_exp c guard in
       let _ , then_code = cmp_block c rt st1 in
@@ -486,16 +493,19 @@ let cmp_function_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
 (* type t = (Ast.id * (Ll.ty * Ll.operand)) list *)
 
 let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
+  let gexp_ty c = function
+    | Id id -> fst (Ctxt.lookup id c)
+    | CNull rty -> Ptr (cmp_rty rty)
+    | CBool b -> I1
+    | CInt i  -> I64
+    | CStr s  -> Ptr (Array(1 + String.length s, I8))
+    | CArr (u, cs) -> Ptr (Struct [I64; Array(List.length cs, cmp_ty u)])
+    | x -> failwith ( "bad global initializer: " ^ (Astlib.string_of_exp (no_loc x)))
+  in
   List.fold_left (fun c -> function
     | Ast.Gvdecl { elt={ name; init } } ->
-      begin match init.elt with
-        | Ast.CInt _ | Ast.CBool _ | Ast.CNull _ | Ast.CStr _ ->
-          let ty , _ , _=  cmp_exp c init in
-          Ctxt.add c name (ty, Gid name)
-        | _ -> failwith "not constructor C in cmp_global_ctxt"
-      end
-    | _ -> c
-  ) c p 
+        Ctxt.add c name (Ptr (gexp_ty c init.elt), Gid name)
+    | _ -> c) c p
 
 (* Compile a function declaration in global context c. Return the LLVMlite cfg
    and a list of global declarations containing the string literals appearing
