@@ -332,7 +332,7 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
     | Ast.CStr str -> let btcst = (gensym "bitcast") in
       let str_id = gensym "str" in
       (I8, (Id btcst), [G(str_id, (Array(1 + String.length str, I8), Ll.GString str))] >@
-                              [I(btcst, (Bitcast (Ptr (Array(1 + String.length str, I8)), Gid str_id, I8)))])
+                              [E(btcst, (Bitcast (Ptr (Array(1 + String.length str, I8)), Gid str_id, I8)))])
     | Ast.Uop (uop,e) ->
       let (ans_ty, op, code) = (cmp_exp c e) in
       let ans_id = (gensym "unop") in
@@ -400,6 +400,31 @@ let rec cmp_stmt (c:Ctxt.t) (rt:Ll.ty) (stmt:Ast.stmt node) : Ctxt.t * stream =
             | Void -> let t = Ll.Ret(Ll.Void, None) in c, [T t]
             |  _ -> failwith "void return type for retval function"
           end
+      end
+
+(* 
+type elt = 
+  | L of Ll.lbl             (* block labels *)
+  | I of uid * Ll.insn      (* instruction *)
+  | T of Ll.terminator      (* block terminators *)
+  | G of gid * Ll.gdecl     (* hoisted globals (usually strings) *)
+  | E of uid * Ll.insn      hoisted entry block instructions *)
+
+    | Ast.Decl declaration ->
+      let id, exp = declaration in
+      let lookup = Ctxt.lookup_function_option id c in
+      begin match lookup with
+        | None -> let (ty, op, str) = (cmp_exp c exp) in  
+        begin match op with
+        (*   let add (c:t) (id:id) (bnd:Ll.ty * Ll.operand) : t = (id,bnd)::c *)
+          | Id i -> let new_ctxt = Ctxt.add c (id) (ty, op) in
+            new_ctxt,  str>@[I(id, (Ll.Alloca (ty)))]>@ 
+            [E(gensym "store",(Store ((ty), op,(Id id))))] 
+          | _ ->    let new_ctxt = Ctxt.add c (id) (ty, op) in
+            new_ctxt, str>@[I(id, (Ll.Alloca (ty)))]>@ 
+            [E(gensym "store",(Store ((ty), op, (Id id))))] 
+        end
+        | Some _ -> failwith "Var already exists in Ctxt"
       end
   end
 (* Compile a series of statements *)
@@ -546,7 +571,6 @@ let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
       | Ast.CStr s -> 
         let ginit = GGid gid in
         let ty    = Ptr (Array(1 + String.length s, I8)) in
-        let gid   = gid in
         let gdecl = (ty,ginit) in
           ( gdecl , [( gid , gdecl )])
       | _ -> failwith "not global init expression in  cmp gexp"
