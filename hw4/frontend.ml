@@ -329,10 +329,11 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
     | Ast.CInt i -> ((I64), (Ll.Const i), [])
     | Ast.CBool bool -> (I1, (Ll.Const (if bool then 1L else 0L)), [])
     | Ast.CNull rty ->  ((cmp_rty rty), Ll.Null, [])
-    | Ast.CStr str -> let btcst = (gensym "bitcast") in
-      let str_id = gensym "str" in
-      (I8, (Id btcst), [G(str_id, (Array(1 + String.length str, I8), Ll.GString str))] >@
-                              [E(btcst, (Bitcast (Ptr (Array(1 + String.length str, I8)), Gid str_id, I8)))])
+    | Ast.CStr str -> let uid = (gensym "str") in
+      let gid = gensym "str_arr" in
+      (I8, (Id uid), 
+      [G(gid, (Array(1 + String.length str, I8), Ll.GString str))] >@
+      [I(uid, (Bitcast (Ptr (Array(1 + String.length str, I8)), Gid gid, I8)))])
     | Ast.Uop (uop,e) ->
       let (ans_ty, op, code) = (cmp_exp c e) in
       let ans_id = (gensym "unop") in
@@ -353,6 +354,15 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
               (cmp_ty ( Ast.TBool)) in
         ((my_ty ), (Ll.Id ans_id), code1 >@ code2 >:: I (ans_id,
                                                           (cmp_binop bop ans_ty1 op1 op2)))
+    | Ast.Id id ->
+      let t, op = Ctxt.lookup id c in
+      begin match t with
+        | Ptr (Fun _) -> t, op, []
+        | Ptr t ->
+          let ans_id = gensym id in
+          t, Id ans_id, [I(ans_id, Load(Ptr t, op))]
+        | _ -> failwith "Id is not of Ptr type"
+      end
   end
 
 (* Compile a statement in context c with return typ rt. Return a new context, 
@@ -415,17 +425,42 @@ type elt =
       let lookup = Ctxt.lookup_function_option id c in
       begin match lookup with
         | None -> let (ty, op, str) = (cmp_exp c exp) in  
-        begin match op with
+            let new_id = gensym id in
+            let new_ctxt = Ctxt.add c (new_id) (ty, op) in
+            new_ctxt, str>@[E(new_id, (Ll.Alloca (ty)))]>@ 
+            [I(gensym "store",(Store ((ty), op, (Id new_id))))] 
         (*   let add (c:t) (id:id) (bnd:Ll.ty * Ll.operand) : t = (id,bnd)::c *)
-          | Id i -> let new_ctxt = Ctxt.add c (id) (ty, op) in
-            new_ctxt,  str>@[I(id, (Ll.Alloca (ty)))]>@ 
-            [E(gensym "store",(Store ((ty), op,(Id id))))] 
-          | _ ->    let new_ctxt = Ctxt.add c (id) (ty, op) in
-            new_ctxt, str>@[I(id, (Ll.Alloca (ty)))]>@ 
-            [E(gensym "store",(Store ((ty), op, (Id id))))] 
-        end
         | Some _ -> failwith "Var already exists in Ctxt"
       end
+    | Ast.Ret None ->
+      c, [T (Ret(Void, None))]
+    | Ast.Ret (Some e) ->
+      let from_t, op, code = cmp_exp c e in
+      if from_t = rt then c, code >:: T(Ret (rt, Some op))
+      else let res_id = gensym "cast" in
+        let new_op   = Ll.(Id res_id) in
+        let new_code = (code >:: I(res_id, Bitcast(from_t, op, rt))) in
+          c, new_code >:: T(Ret (rt, Some new_op))
+      
+    | Ast.If (guard, st1, st2) -> 
+      let guard_ty, guard_op, guard_code = cmp_exp c guard in
+      let _ , then_code = cmp_block c rt st1 in
+      let _ , else_code = cmp_block c rt st2 in
+      let lt, le, lm = gensym "then", gensym "else", gensym "merge" in
+        c, guard_code 
+        >:: T(Cbr (guard_op, lt, le))
+        >:: L lt >@ then_code >:: T(Br lm) 
+        >:: L le >@ else_code >:: T(Br lm) 
+        >:: L lm
+    | Ast.While (guard, body) ->
+      let guard_ty, guard_op, guard_code = cmp_exp c guard in
+      let lcond, lbody, lpost = gensym "cond", gensym "body", gensym "post" in
+      let _ , body_code = cmp_block c rt body  in
+        c, [] 
+        >:: T (Br lcond)
+        >:: L lcond >@ guard_code >:: T (Cbr (guard_op, lbody, lpost))
+        >:: L lbody >@ body_code  >:: T (Br lcond)
+        >:: L lpost
   end
 (* Compile a series of statements *)
 and cmp_block (c:Ctxt.t) (rt:Ll.ty) (stmts:Ast.block) : Ctxt.t * stream =
