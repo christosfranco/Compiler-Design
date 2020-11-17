@@ -324,17 +324,16 @@ let cmp_binop bop ty op1 op2 :  insn =
     | Ast.Gte  -> Ll.Icmp  (Sge, ty, op1, op2)
   end
 
-
 let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
-  begin match exp.elt with
+  match exp.elt with
     | Ast.CInt i -> ((I64), (Ll.Const i), [])
     | Ast.CBool bool -> (I1, (Ll.Const (if bool then 1L else 0L)), [])
-    | Ast.CNull rty ->  ((cmp_rty rty), Ll.Null, [])
+    | Ast.CNull rty ->  (Ptr (cmp_rty rty), Ll.Null, [])
     | Ast.CStr str -> let uid = (gensym "str") in
       let gid = gensym "str_arr" in
-      (I8, (Id uid), 
+      (Ptr I8, (Id uid), 
       [G(gid, (Array(1 + String.length str, I8), Ll.GString str))] >@
-      [I(uid, (Bitcast (Ptr (Array(1 + String.length str, I8)), Gid gid, I8)))])
+      [I(uid, (Gep (Ptr (Array(1 + String.length str, I8)), Gid gid, [Const 0L; Const 0L;])))])
     | Ast.Uop (uop,e) ->
       let (ans_ty, op, code) = (cmp_exp c e) in
       let ans_id = (gensym "unop") in
@@ -356,18 +355,52 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
         ((my_ty ), (Ll.Id ans_id), code1 >@ code2 >:: I (ans_id,
                                                           (cmp_binop bop ans_ty1 op1 op2)))
     | Ast.Id id ->
-      let t, op = Ctxt.lookup id c in
-      begin match t with
-        | Ptr (Fun _) -> t, op, []
-        | Ptr t ->
+      let ty, op = Ctxt.lookup id c in
+      begin match ty with
+        | Ptr (Fun _) -> ty, op, []
+        | Ptr ty ->
           let ans_id = gensym id in
-          t, Id ans_id, [I(ans_id, Load(Ptr t, op))]
+          ty, Id ans_id, [I(ans_id, Load(Ptr ty, op))]
         | _ -> failwith "Id is not of Ptr type"
       end
+    | Ast.Index (e, i) ->
+      let ans_ty, ptr_op, code = cmp_exp_lhs c exp in
+      let ans_id = gensym "index" in
+      ans_ty, Id ans_id, code >:: I(ans_id, Load(Ptr ans_ty, ptr_op))
     | Ast.NewArr (elt_ty, e1) ->    
       let _, size_op, size_code = cmp_exp c e1 in
       let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
       arr_ty, arr_op, size_code >@ alloc_code
+    | Ast.CArr (elt_ty, cs)  ->
+      let size_op = Ll.Const (Int64.of_int @@ List.length cs) in
+      let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
+      let ll_elt_ty = cmp_ty elt_ty in
+      let add_elt s (i, elt) =
+        let _,elt_op, elt_code = cmp_exp c elt  in
+        let ind = gensym "ind" in 
+        s >@ elt_code >@ lift
+          [ ind, Gep(arr_ty, arr_op, [Const 0L; Const 1L; Ll.Const (Int64.of_int i) ])
+          ; "",  Store(ll_elt_ty, elt_op, Id ind) ] 
+      in
+      let ind_code = List.(fold_left add_elt [] @@ mapi (fun i e -> i, e) cs) in
+      arr_ty, arr_op, alloc_code >@ ind_code
+  
+and cmp_exp_lhs (c:Ctxt.t) (e:exp node) : Ll.ty * Ll.operand * stream =
+  begin match e.elt with
+  | Ast.Id x ->
+    let t, op = Ctxt.lookup x c in
+    t, op, []
+  | Ast.Index (e, i) ->
+    let arr_ty, arr_op, arr_code = cmp_exp c e in
+    let _, ind_op, ind_code = cmp_exp c i in
+    let ans_ty = match arr_ty with 
+      | Ptr (Struct [_; Array (_,t)]) -> t 
+      | _ -> failwith "Index: indexed into non pointer" in
+    let ptr_id, tmp_id = gensym "index_ptr", gensym "tmp" in
+    ans_ty, (Id ptr_id),
+    arr_code >@ ind_code >@ lift
+      [ptr_id, Gep(arr_ty, arr_op, [Ll.Const (Int64.of_int 0); Ll.Const (Int64.of_int 1); ind_op]) ]
+  | _ -> failwith "invalid lhs expression"
   end
 
 (* Compile a statement in context c with return typ rt. Return a new context, 
@@ -434,6 +467,10 @@ type elt =
           >:: E(res_id, Alloca ty)
           >:: I("",     Store (ty, op, Id res_id))
     
+    | Ast.Assn (path ,e) ->
+      let _, pop, path_code = cmp_exp_lhs c path in
+      let ll_ty, eop, exp_code = cmp_exp c e in
+      c, path_code >@ exp_code >:: I("", (Store (ll_ty, eop, pop)))
       
     | Ast.If (guard, st1, st2) -> 
       let guard_ty, guard_op, guard_code = cmp_exp c guard in
@@ -525,7 +562,7 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
     begin match x with
       | (x, y) ->
         let uid = gensym "alloca" in
-        I(uid, (Alloca (cmp_ty x)))::I(gensym "alloca", (Store ((cmp_ty x), (Id y), (Id uid))))::[]
+        I(uid, (Alloca (cmp_ty x)))::I("", (Store ((cmp_ty x), (Id y), (Id uid))))::[]
     end
   in
   let args = f.elt.args in
@@ -606,10 +643,22 @@ let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
         end
       | Ast.CInt i ->  ((I64, GInt i), [gid, (I64, GInt i)])
       | Ast.CStr s -> 
-        let ginit = GGid gid in
-        let ty    = Ptr (Array(1 + String.length s, I8)) in
-        let gdecl = (ty,ginit) in
-          ( gdecl , [( gid , gdecl )])
+        let gid = gensym "str" in
+        let ll_ty = (Array(1 + String.length s, I8)) in
+        (Ptr ll_ty, GGid gid), [gid, (ll_ty, GString s)]
+      | CArr (u, cs) ->
+        let elts, gs = List.fold_right
+            (fun cst (elts, gs) ->
+              let gd, gs' = cmp_gexp c cst in
+              gd::elts, gs' @ gs) cs ([], [])
+        in
+        let len = List.length cs in
+        let ll_u = cmp_ty  u in 
+        let gid = gensym "global_arr" in
+        let arr_t = Struct [ I64; Array(len, ll_u) ] in
+        let arr_i = GStruct [ I64, GInt (Int64.of_int len); Array(len, ll_u), GArray elts ] in
+        (Ptr arr_t, GGid gid), (gid, (arr_t, arr_i))::gs
+
       | _ -> failwith "not global init expression in  cmp gexp"
     end
   
