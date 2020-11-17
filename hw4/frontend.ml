@@ -427,17 +427,7 @@ type elt =
       let new_ctxt = Ctxt.add c id (Ptr ty, Id res_id) in
       new_ctxt, code 
           >:: E(res_id, Alloca ty)
-          >:: I("",     Store (ty, op, Id res_id))
-    | Ast.Ret None ->
-      c, [T (Ret(Void, None))]
-    | Ast.Ret (Some e) ->
-      let from_t, op, code = cmp_exp c e in
-      if from_t = rt then c, code >:: T(Ret (rt, Some op))
-      else let res_id = gensym "cast" in
-        let new_op   = Ll.(Id res_id) in
-        let new_code = (code >:: I(res_id, Bitcast(from_t, op, rt))) in
-          c, new_code >:: T(Ret (rt, Some new_op))
-      
+          >:: I("",     Store (ty, op, Id res_id))      
     | Ast.If (guard, st1, st2) -> 
       let guard_ty, guard_op, guard_code = cmp_exp c guard in
       let _ , then_code = cmp_block c rt st1 in
@@ -452,11 +442,17 @@ type elt =
       let guard_ty, guard_op, guard_code = cmp_exp c guard in
       let lcond, lbody, lpost = gensym "cond", gensym "body", gensym "post" in
       let _ , body_code = cmp_block c rt body  in
-        c, [] 
+        c ,[]
         >:: T (Br lcond)
         >:: L lcond >@ guard_code >:: T (Cbr (guard_op, lbody, lpost))
         >:: L lbody >@ body_code  >:: T (Br lcond)
         >:: L lpost
+    | Ast.For (inits, guard, after, body) ->
+      let guard = match guard with Some e -> e | None -> no_loc (CBool true) in
+      let after = match after with Some s -> [s] | None -> [] in
+      let body = body @ after in
+      let ds = List.map (fun d -> no_loc (Decl d)) inits in
+      cmp_block c rt (ds @ [no_loc @@ Ast.While (guard, body)])
   end
 (* Compile a series of statements *)
 and cmp_block (c:Ctxt.t) (rt:Ll.ty) (stmts:Ast.block) : Ctxt.t * stream =
