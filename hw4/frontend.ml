@@ -420,18 +420,14 @@ type elt =
   | G of gid * Ll.gdecl     (* hoisted globals (usually strings) *)
   | E of uid * Ll.insn      hoisted entry block instructions *)
 
-    | Ast.Decl declaration ->
-      let id, exp = declaration in
-      let lookup = Ctxt.lookup_function_option id c in
-      begin match lookup with
-        | None -> let (ty, op, str) = (cmp_exp c exp) in  
-            let new_id = gensym id in
-            let new_ctxt = Ctxt.add c (new_id) (ty, op) in
-            new_ctxt, str>@[E(new_id, (Ll.Alloca (ty)))]>@ 
-            [I(gensym "store",(Store ((ty), op, (Id new_id))))] 
-        (*   let add (c:t) (id:id) (bnd:Ll.ty * Ll.operand) : t = (id,bnd)::c *)
-        | Some _ -> failwith "Var already exists in Ctxt"
-      end
+    | Ast.Decl decl ->
+      let id, exp = decl in
+      let ty, op, code = cmp_exp c exp in
+      let res_id = gensym id in
+      let new_ctxt = Ctxt.add c id (Ptr ty, Id res_id) in
+      new_ctxt, code 
+          >:: E(res_id, Alloca ty)
+          >:: I("",     Store (ty, op, Id res_id))
     | Ast.Ret None ->
       c, [T (Ret(Void, None))]
     | Ast.Ret (Some e) ->
