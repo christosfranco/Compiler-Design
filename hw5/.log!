@@ -1,0 +1,1 @@
+ocamlbuild -Is util,x86,grading,ll -libs unix,str,nums main.native -use-menhir -yaccflag --explain
