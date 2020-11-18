@@ -329,11 +329,13 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
     | Ast.CInt i -> ((I64), (Ll.Const i), [])
     | Ast.CBool bool -> (I1, (Ll.Const (if bool then 1L else 0L)), [])
     | Ast.CNull rty ->  (Ptr (cmp_rty rty), Ll.Null, [])
+    
     | Ast.CStr str -> let uid = (gensym "str") in
       let gid = gensym "str_arr" in
       (Ptr I8, (Id uid), 
       [G(gid, (Array(1 + String.length str, I8), Ll.GString str))] >@
       [I(uid, (Gep (Ptr (Array(1 + String.length str, I8)), Gid gid, [Const 0L; Const 0L;])))])
+    
     | Ast.Uop (uop,e) ->
       let (ans_ty, op, code) = (cmp_exp c e) in
       let ans_id = (gensym "unop") in
@@ -352,8 +354,9 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
               (cmp_ty ( Ast.TInt))
           | Ast.Eq | Ast.Neq | Ast.Lt | Ast.Lte | Ast.Gt | Ast.Gte | Ast.And | Ast.Or -> 
               (cmp_ty ( Ast.TBool)) in
-        ((my_ty ), (Ll.Id ans_id), code1 >@ code2 >:: I (ans_id,
-                                                          (cmp_binop bop ans_ty1 op1 op2)))
+        (my_ty, (Ll.Id ans_id), code1 >@ code2 >::
+         I (ans_id, (cmp_binop bop ans_ty1 op1 op2)))
+    
     | Ast.Id id ->
       let ty, op = Ctxt.lookup id c in
       begin match ty with
@@ -363,8 +366,9 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
           ty, Id ans_id, [I(ans_id, Load(Ptr ty, op))]
         | _ -> failwith "Id is not of Ptr type"
       end
+
     | Ast.Index (e, i) ->
-      let ans_ty, ptr_op, code = cmp_exp_lhs c exp in
+      let ans_ty, ptr_op, code = cmp_lhs c exp in
       let ans_id = gensym "index" in
       ans_ty, Id ans_id, code >:: I(ans_id, Load(Ptr ans_ty, ptr_op))
     
@@ -375,58 +379,69 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
       let _, size_op, size_code = cmp_exp c e1 in
       let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
       arr_ty, arr_op, size_code >@ alloc_code
+
     | Ast.CArr (elt_ty, cs)  ->
       let size_op = Ll.Const (Int64.of_int @@ List.length cs) in
       let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
       let ll_elt_ty = cmp_ty elt_ty in
       let add_elt s (i, elt) =
       (* todo *)
-        let elt_op, elt_code = cmp_exp_as c elt ll_elt_ty in
+        let elt_op, elt_code = recmp_exp c elt ll_elt_ty in
         let ind = gensym "ind" in 
-        s >@ elt_code >@ lift
+          s >@ elt_code >@ lift
           [ ind, Gep(arr_ty, arr_op, [Const 0L; Const 1L; Ll.Const (Int64.of_int i) ])
           ; "",  Store(ll_elt_ty, elt_op, Id ind) ] 
       in
       let ind_code = List.(fold_left add_elt [] @@ mapi (fun i e -> i, e) cs) in
       arr_ty, arr_op, alloc_code >@ ind_code
   
-and cmp_exp_lhs (c:Ctxt.t) (e:exp node) : Ll.ty * Ll.operand * stream =
+
+(* Functions to be used in both cmp_exp and cmp_stmt *)
+and cmp_lhs (c:Ctxt.t) (e:exp node) : Ll.ty * Ll.operand * stream =
   begin match e.elt with
-  | Ast.Id x ->
-    let t, op = Ctxt.lookup x c in
-    t, op, []
-  | Ast.Index (e, i) ->
+  | Ast.Id id ->
+    let ty, op = Ctxt.lookup id c in
+    ty, op, []
+  | Ast.Index (e, index) ->
     let arr_ty, arr_op, arr_code = cmp_exp c e in
-    let _, ind_op, ind_code = cmp_exp c i in
+    let _, index_op, index_code = cmp_exp c index in
     let ans_ty = match arr_ty with 
       | Ptr (Struct [_; Array (_,t)]) -> t 
       | _ -> failwith "Index: indexed into non pointer" in
-    let ptr_id, tmp_id = gensym "index_ptr", gensym "tmp" in
-    ans_ty, (Id ptr_id),
-    arr_code >@ ind_code >@ lift
-      [ptr_id, Gep(arr_ty, arr_op, [Ll.Const (Int64.of_int 0); Ll.Const (Int64.of_int 1); ind_op]) ]
+    let pointer_id = gensym "index_ptr" in
+    ans_ty, (Id pointer_id),
+    arr_code >@ index_code >@ 
+    (* get stream of 
+    lift : (uid * insn) list -> stream 
+    *)
+    lift 
+    [pointer_id, Gep(arr_ty, arr_op, [Ll.Const (Int64.of_int 0);
+     Ll.Const (Int64.of_int 1); index_op]) ]
   | _ -> failwith "invalid lhs expression"
   end
 
-and cmp_exp_as (c:Ctxt.t) (e:Ast.exp node) (t:Ll.ty) : Ll.operand * stream =
-  let from_t, op, code = cmp_exp c e in
-  if from_t = t then op, code
+and recmp_exp (c:Ctxt.t) (e:Ast.exp node) (ll_ty:Ll.ty) : Ll.operand * stream =
+  let ty, op, code = cmp_exp c e in
+  if ty = ll_ty then op, code
   else let res_id = gensym "cast" in
-    Id res_id, code >:: I(res_id, Bitcast(from_t, op, t))
+    Id res_id, 
+    code >:: I(res_id, Bitcast(ty, op, ll_ty))
 
-and cmp_call (c:Ctxt.t) (exp:Ast.exp node) (es:Ast.exp node list) : Ll.ty * Ll.operand * stream =
-  let (t, op, s) = cmp_exp c exp in
-  let (ts, rt) = 
-    match t with
-    | Ptr (Fun (l, r)) -> l, r
-    | _ -> failwith "nonfunction passed to cmp_call" in
+and cmp_call (c:Ctxt.t) (exp:Ast.exp node) (exps:Ast.exp node list) : Ll.ty * Ll.operand * stream =
+  let (ty, op, s) = cmp_exp c exp in
+  let (ts, rty) = 
+    match ty with
+    | Ptr (Fun (left, right)) -> left, right
+    | _ -> failwith "cannot compile Ptr <something> in cmp_call has to be Fun" in
   let args, args_code = List.fold_right2
-      (fun e t (args, code) ->
-         let arg_op, arg_code = cmp_exp_as c e t in
-         (t, arg_op)::args, arg_code @ code
-      ) es ts ([],[]) in
+      (fun exp ty (args, code) ->
+         let arg_op, arg_code = recmp_exp c exp ty in
+         (ty, arg_op)::args, arg_code @ code
+      ) exps ts ([],[]) in
   let res_id = gensym "result" in
-  rt, Id res_id, s >@ args_code >:: I(res_id, Call(rt, op, args))
+  rty,
+  Id res_id, 
+  s >@ args_code >:: I(res_id, Call(rty, op, args))
 (* Compile a statement in context c with return typ rt. Return a new context, 
    possibly extended with new local bindings, and the instruction stream
    implementing the statement.
@@ -492,7 +507,7 @@ type elt =
           >:: I("",     Store (ty, op, Id res_id))
     
     | Ast.Assn (path ,e) ->
-      let _, pop, path_code = cmp_exp_lhs c path in
+      let _, pop, path_code = cmp_lhs c path in
       let ll_ty, eop, exp_code = cmp_exp c e in
       c, path_code >@ exp_code >:: I("", (Store (ll_ty, eop, pop)))
       
@@ -500,21 +515,21 @@ type elt =
       let guard_ty, guard_op, guard_code = cmp_exp c guard in
       let _ , then_code = cmp_block c rt st1 in
       let _ , else_code = cmp_block c rt st2 in
-      let lt, le, lm = gensym "then", gensym "else", gensym "merge" in
+      let l_then, l_else, l_merge = gensym "then", gensym "else", gensym "merge" in
         c, guard_code 
-        >:: T(Cbr (guard_op, lt, le))
-        >:: L lt >@ then_code >:: T(Br lm) 
-        >:: L le >@ else_code >:: T(Br lm) 
-        >:: L lm
+        >:: T(Cbr (guard_op, l_then, l_else))
+        >:: L l_then >@ then_code >:: T(Br l_merge) 
+        >:: L l_else >@ else_code >:: T(Br l_merge) 
+        >:: L l_merge
     | Ast.While (guard, body) ->
       let guard_ty, guard_op, guard_code = cmp_exp c guard in
-      let lcond, lbody, lpost = gensym "cond", gensym "body", gensym "post" in
+      let l_condition, l_body, l_post = gensym "cond", gensym "body", gensym "post" in
       let _ , body_code = cmp_block c rt body  in
         c ,[]
-        >:: T (Br lcond)
-        >:: L lcond >@ guard_code >:: T (Cbr (guard_op, lbody, lpost))
-        >:: L lbody >@ body_code  >:: T (Br lcond)
-        >:: L lpost
+        >:: T (Br l_condition)
+        >:: L l_condition >@ guard_code >:: T (Cbr (guard_op, l_body, l_post))
+        >:: L l_body >@ body_code  >:: T (Br l_condition)
+        >:: L l_post
     | Ast.For (inits, guard, after, body) ->
       let guard = match guard with Some e -> e | None -> no_loc (CBool true) in
       let after = match after with Some s -> [s] | None -> [] in
@@ -522,8 +537,8 @@ type elt =
       let ds = List.map (fun d -> no_loc (Decl d)) inits in
       cmp_block c rt (ds @ [no_loc @@ Ast.While (guard, body)])
     
-    | Ast.SCall (f, es) ->
-      let _, op, code = cmp_call c f es in
+    | Ast.SCall (func, exps) ->
+      let _, op, code = cmp_call c func exps in
       c, code
   end
 (* Compile a series of statements *)
@@ -585,7 +600,9 @@ let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
  *)
 
 let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) list =
+  (* function return type, arguments, and code body *)
   let {frtyp; args; body} = f.elt in
+  (* 1,2,3 - Add one arg to the context *)
   let add_arg (s_typ, s_id) (c,code,args) =
     let ll_id = gensym s_id in
     let ll_ty = cmp_ty s_typ in
@@ -603,13 +620,15 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
       >@ code,
       (ll_ty, ll_id)::args in
   let ll_rty = cmp_ret_ty frtyp in
+  (* Add arguments to the context and return the new context, aswell as code, args *)
   let c, args_code, args = List.fold_right add_arg args (c,[],[]) in
-  (* 4.compile block *)
+  (* 4.compile block , get the stream of code*)
   let _, block_code = cmp_block c ll_rty body in
   let arg_tys, f_param = List.split args in
   let f_ty = (arg_tys, ll_rty) in
-  (* 5. get cfg *)
+  (* 5. get cfg, and the global decl (indcludes gids ) from cfg_of_stream *)
   let f_cfg, g_decl = cfg_of_stream (args_code >@ block_code) in
+  (* Create f_decl from its type decl *)
   let f_decl ={f_ty=f_ty; f_param=f_param; f_cfg = f_cfg} in 
   f_decl, g_decl
 
@@ -648,21 +667,20 @@ let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
         end
       | Ast.CInt i ->  ((I64, GInt i), [gid, (I64, GInt i)])
       | Ast.CStr s -> 
-        let gid = gensym "str" in
         let ll_ty = (Array(1 + String.length s, I8)) in
         (Ptr ll_ty, GGid gid), [gid, (ll_ty, GString s)]
-      | CArr (u, cs) ->
+      | CArr (ty, cs) ->
         let elts, gs = List.fold_right
             (fun cst (elts, gs) ->
-              let gd, gs' = cmp_gexp c cst in
-              gd::elts, gs' @ gs) cs ([], [])
+              let g_decl, new_gs = cmp_gexp c cst in
+              g_decl::elts, new_gs @ gs) cs ([], [])
         in
-        let len = List.length cs in
-        let ll_u = cmp_ty  u in 
-        let gid = gensym "global_arr" in
-        let arr_t = Struct [ I64; Array(len, ll_u) ] in
-        let arr_i = GStruct [ I64, GInt (Int64.of_int len); Array(len, ll_u), GArray elts ] in
-        (Ptr arr_t, GGid gid), (gid, (arr_t, arr_i))::gs
+        let length = List.length cs in
+        let ll_type = cmp_ty ty in 
+        let arr_gid = gensym "global_arr" in
+        let arr_type = Struct [I64; Array(length, ll_type) ] in
+        let arr_init = GStruct [I64, GInt (Int64.of_int length); Array(length, ll_type), GArray elts ] in
+        (Ptr arr_type, GGid arr_gid), (arr_gid, (arr_type, arr_init))::gs
 
       | _ -> failwith "not global init expression in  cmp gexp"
     end
