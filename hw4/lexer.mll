@@ -44,13 +44,7 @@
   ("return", RETURN);
   ("var", VAR);
   ("global", GLOBAL);
-  (* For loops *)
-  ("for", FOR);
-  (* Bools *)
-  ("true", TRUE);
-  ("false", FALSE);
 
-  ("new", NEW);
 
   (* Symbols *)
   ( ";", SEMI);
@@ -60,32 +54,39 @@
   ( "+", PLUS);
   ( "-", DASH);
   ( "*", STAR);
+  ( "=", EQ);
+  ( "==", EQEQ);
   ( "!", BANG);
   ( "~", TILDE);
   ( "(", LPAREN);
   ( ")", RPAREN);
   ( "[", LBRACKET);
   ( "]", RBRACKET);
-  (* Missing bin ops *)
-  ( "!=", NEQ);
-  ( "&", LAND);
-  ( "[&]", BAND);
-  ( "|", LOR);
-  ( "[|]", BOR);
-
+  (* For loops *)
+  ("for", FOR);
+  ("new", NEW);
+  (* Bools *)
+  ("true", TRUE);
+  ("false", FALSE);
+  ("bool", TBOOL);
+  (* Shift ops *)
+  ( "<<", LLSHIFT);
+  ( ">>", LRSHIFT);
+  ( ">>>", ARSHIFT);
   (* Compare *)
-  ( "=", EQ);
-  ( "==", EQEQ);
+  ( "!=", NEQ);
   ( "<", LESS);
   ( "<=", LESSEQ);
   ( ">", GREAT);
   ( ">=", GREATEQ);
+  (* Missing bin ops *)
+  ( "&", LAND);
+  ( "|", LOR);
+  ( "[&]", BAND);
+  ( "[|]", BOR);
 
-  (* Shift ops *)
-  ( ">>", LRSHIFT);
-  ( ">>>", ARSHIFT);
-  ( "<<", LLSHIFT);
-  
+  (* Fun *)
+  ( "->", ARROW);
   ]
 
 let (symbol_table : (string, Parser.token) Hashtbl.t) = Hashtbl.create 1024

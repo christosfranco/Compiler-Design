@@ -22,7 +22,9 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 /* array */
 %token TRUE /*bool*/
 %token FALSE /*bool*/
-%token <string> IDENT 
+%token <string> IDENT
+
+%token <Ast.ty > TARRAY   
 
 /* Types */
 %token TINT     /* int */
@@ -77,6 +79,7 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token LOR      /* | */
 %token BAND     /* [&] */
 %token BOR      /* [|] */
+%token ARROW    /* -> */
 
 
 %left BOR
@@ -144,6 +147,10 @@ ty:
 %inline rtyp:
   | TSTRING { RString }
   | t=ty LBRACKET RBRACKET { RArray t }
+  | LPAREN RPAREN ARROW ret=ret_ty { RFun ([], ret) }
+  | LPAREN t=ty RPAREN EQ ret=ret_ty { RFun ([t], ret) }
+  | LPAREN t=ty COMMA l=separated_list(COMMA, ty) RPAREN EQ ret=ret_ty
+       { RFun (t :: l, ret) }
 
 %inline bop:
   | PLUS   { Add }
