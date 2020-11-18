@@ -304,7 +304,7 @@ let oat_alloc_array (t:Ast.ty) (size:Ll.operand) : Ll.ty * operand * stream =
 
 *)
 
-let cmp_binop bop ty op1 op2 :  insn =
+let cmp_binop bop ty op1 op2 :  Ll.insn =
   begin match bop with
     | Ast.Add  -> Ll.Binop (Add, ty, op1, op2)
     | Ast.Mul  -> Ll.Binop (Mul, ty, op1, op2)
@@ -367,6 +367,10 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
       let ans_ty, ptr_op, code = cmp_exp_lhs c exp in
       let ans_id = gensym "index" in
       ans_ty, Id ans_id, code >:: I(ans_id, Load(Ptr ans_ty, ptr_op))
+    
+    | Ast.Call (f, es) ->
+      cmp_call c f es 
+
     | Ast.NewArr (elt_ty, e1) ->    
       let _, size_op, size_code = cmp_exp c e1 in
       let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
@@ -376,7 +380,8 @@ let rec cmp_exp (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.operand * stream =
       let arr_ty, arr_op, alloc_code = oat_alloc_array elt_ty size_op in
       let ll_elt_ty = cmp_ty elt_ty in
       let add_elt s (i, elt) =
-        let _,elt_op, elt_code = cmp_exp c elt  in
+      (* todo *)
+        let elt_op, elt_code = cmp_exp_as c elt ll_elt_ty in
         let ind = gensym "ind" in 
         s >@ elt_code >@ lift
           [ ind, Gep(arr_ty, arr_op, [Const 0L; Const 1L; Ll.Const (Int64.of_int i) ])
@@ -403,6 +408,25 @@ and cmp_exp_lhs (c:Ctxt.t) (e:exp node) : Ll.ty * Ll.operand * stream =
   | _ -> failwith "invalid lhs expression"
   end
 
+and cmp_exp_as (c:Ctxt.t) (e:Ast.exp node) (t:Ll.ty) : Ll.operand * stream =
+  let from_t, op, code = cmp_exp c e in
+  if from_t = t then op, code
+  else let res_id = gensym "cast" in
+    Id res_id, code >:: I(res_id, Bitcast(from_t, op, t))
+
+and cmp_call (c:Ctxt.t) (exp:Ast.exp node) (es:Ast.exp node list) : Ll.ty * Ll.operand * stream =
+  let (t, op, s) = cmp_exp c exp in
+  let (ts, rt) = 
+    match t with
+    | Ptr (Fun (l, r)) -> l, r
+    | _ -> failwith "nonfunction passed to cmp_call" in
+  let args, args_code = List.fold_right2
+      (fun e t (args, code) ->
+         let arg_op, arg_code = cmp_exp_as c e t in
+         (t, arg_op)::args, arg_code @ code
+      ) es ts ([],[]) in
+  let res_id = gensym "result" in
+  rt, Id res_id, s >@ args_code >:: I(res_id, Call(rt, op, args))
 (* Compile a statement in context c with return typ rt. Return a new context, 
    possibly extended with new local bindings, and the instruction stream
    implementing the statement.
@@ -497,6 +521,10 @@ type elt =
       let body = body @ after in
       let ds = List.map (fun d -> no_loc (Decl d)) inits in
       cmp_block c rt (ds @ [no_loc @@ Ast.While (guard, body)])
+    
+    | Ast.SCall (f, es) ->
+      let _, op, code = cmp_call c f es in
+      c, code
   end
 (* Compile a series of statements *)
 and cmp_block (c:Ctxt.t) (rt:Ll.ty) (stmts:Ast.block) : Ctxt.t * stream =
@@ -532,7 +560,7 @@ let cmp_function_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
 let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
   let gexp_ty c = function
     | Id id -> fst (Ctxt.lookup id c)
-    | CNull rty -> Ptr (cmp_rty rty)
+    | CNull rty -> (cmp_ty (TRef rty))
     | CBool b -> I1
     | CInt i  -> I64
     | CStr s  -> Ptr (Array(1 + String.length s, I8))
@@ -635,7 +663,7 @@ let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) lis
 let rec cmp_gexp c (e:Ast.exp node) : Ll.gdecl * (Ll.gid * Ll.gdecl) list =
   let gid = gensym "constant" in
     begin match e.elt with
-      | Ast.CNull rty -> ((cmp_rty rty, GNull), [gid, (cmp_rty rty, GNull)])
+      | Ast.CNull rty -> ((cmp_ty (TRef rty), GNull), [])
       | Ast.CBool bool -> 
         begin match bool with
           | true -> ((I1, GInt 1L), [gid, (I1, GInt 1L)])

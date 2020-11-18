@@ -24,7 +24,7 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token FALSE /*bool*/
 %token <string> IDENT
 
-/* %token <Ast.ty> TARRAY    */
+%token <Ast.ty > TARRAY   
 
 /* Types */
 %token TINT     /* int */
@@ -79,7 +79,7 @@ let loc (startpos:Lexing.position) (endpos:Lexing.position) (elt:'a) : 'a node =
 %token LOR      /* | */
 %token BAND     /* [&] */
 %token BOR      /* [|] */
-
+%token ARROW    /* -> */
 
 
 %left BOR
@@ -135,7 +135,7 @@ arglist:
 ty:
   | TINT   { TInt }
   | r=rtyp { TRef r } 
-  | LPAREN t=ty RPAREN { t } 
+  | LPAREN t=ty RPAREN { t }
   | TBOOL  { TBool}
 
 /* return types */
@@ -147,6 +147,10 @@ ty:
 %inline rtyp:
   | TSTRING { RString }
   | t=ty LBRACKET RBRACKET { RArray t }
+  | LPAREN RPAREN ARROW ret=ret_ty { RFun ([], ret) }
+  | LPAREN t=ty RPAREN EQ ret=ret_ty { RFun ([t], ret) }
+  | LPAREN t=ty COMMA l=separated_list(COMMA, ty) RPAREN EQ ret=ret_ty
+       { RFun (t :: l, ret) }
 
 %inline bop:
   | PLUS   { Add }
@@ -181,11 +185,12 @@ gexp:
   /* Bool expressions */
   | TRUE                { loc $startpos $endpos @@ CBool true }
   | FALSE               { loc $startpos $endpos @@ CBool false }
-  | NEW t=ty LBRACKET? e1=gexp RBRACKET 
-                        {loc $startpos $endpos @@ NewArr (t,e1)}
+  /* | NEW t=ty LBRACKET? e1=gexp RBRACKET 
+                        {loc $startpos $endpos @@ NewArr (t,e1)} */
   | NEW t=ty LBRACKET RBRACKET LBRACE cs=separated_list(COMMA, gexp) RBRACE
                { loc $startpos $endpos @@ CArr (t, cs) }
   | s=STRING            { loc $startpos $endpos @@ CStr s  }
+  | id=IDENT {loc $startpos $endpos @@ Id id }
 
 lhs:  
   | id=IDENT            { loc $startpos $endpos @@ Id id }
@@ -208,6 +213,8 @@ exp:
   | e=exp LPAREN es=separated_list(COMMA, exp) RPAREN
                         { loc $startpos $endpos @@ Call (e,es) }
 
+  | NEW t=ty LBRACKET e1=exp RBRACKET LBRACE u=IDENT ARROW e2=exp RBRACE
+                        { loc $startpos $endpos @@ NewArr(t, e1) }
   
   /* Array */
   | NEW t=ty LBRACKET RBRACKET LBRACE cs=separated_list(COMMA, exp) RBRACE
