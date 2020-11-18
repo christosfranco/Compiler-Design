@@ -585,56 +585,33 @@ let cmp_global_ctxt (c:Ctxt.t) (p:Ast.prog) : Ctxt.t =
  *)
 
 let cmp_fdecl (c:Ctxt.t) (f:Ast.fdecl node) : Ll.fdecl * (Ll.gid * Ll.gdecl) list =
-  (* 1 allocate stack space *)
-  let alloca_args2  (x: ty * id) =
-    begin match x with
-      | (x, y) ->
-        let uid = gensym "alloca" in
-        I(uid, (Alloca (cmp_ty x)))::I("", (Store ((cmp_ty x), (Id y), (Id uid))))::[]
-    end
-  in
-  let args = f.elt.args in
+  let {frtyp; args; body} = f.elt in
+  let add_arg (s_typ, s_id) (c,code,args) =
+    let ll_id = gensym s_id in
+    let ll_ty = cmp_ty s_typ in
+    let alloca_id = gensym s_id in
 
-  (* 3. *)
-  let uid_lst (i: int) (x: elt list) =
-    begin match (List.nth x 0) with
-      | I (uid, y) ->
-        begin match (List.nth args i) with
-          | (typ, id) -> (id, uid, typ) 
-        end
-      | _ -> failwith "not an I"
-    end in
-
-    (* let add (c:t) (id:id) (bnd:Ll.ty * Ll.operand) : t = (id,bnd)::c *)
-  (* 3. add bindings  *)
-  let update_ctxt c (x: Ast.id * string * Ast.ty) =
-    begin match x with 
-      | (id, str, ty) -> Ctxt.add c id (cmp_ty ty, Id str)
-    end
-  in   
-
-  let args_elt2 =  (List.map alloca_args2 args) in
-
-  let new_c = List.fold_left update_ctxt c (List.mapi uid_lst args_elt2) in
-
-  (* type t = (Ast.id * (Ll.ty * Ll.operand)) list *)
-  (* let new_c = c in *)
-  (* 4. *)
-  let new_ctxt, strm = cmp_block new_c (cmp_ret_ty f.elt.frtyp) f.elt.body in
-  (* 5. *)
-  let func_cfg, gdecl = 
-  cfg_of_stream (List.rev (List.flatten args_elt2) >@ strm) in
-
-  (* split args into ty and id *)
-  let arg_ty (x: ty * id) = cmp_ty (fst x) in
-  let args_id  (x: ty * id) = snd x in
-
-  let arg_tys = List.map arg_ty args in
-  let func_fty = (arg_tys, (cmp_ret_ty f.elt.frtyp)) in
-  let f_param = List.map args_id args in
-
-  let fdecl = { f_ty = func_fty; f_param = f_param; f_cfg = func_cfg } in
-  (fdecl, (gdecl))
+    (* 1. alloc *)
+    let allocate_space = E(alloca_id, Alloca ll_ty) in
+      (* 2. store *)
+    let store_args = I("", Store(ll_ty, Id ll_id, Id alloca_id)) in
+    (* 3. extend context *)
+    let c = Ctxt.add c s_id (Ptr ll_ty, Ll.Id alloca_id)in
+      c, []
+      >@ [allocate_space]
+      >@ [store_args]
+      >@ code,
+      (ll_ty, ll_id)::args in
+  let ll_rty = cmp_ret_ty frtyp in
+  let c, args_code, args = List.fold_right add_arg args (c,[],[]) in
+  (* 4.compile block *)
+  let _, block_code = cmp_block c ll_rty body in
+  let arg_tys, f_param = List.split args in
+  let f_ty = (arg_tys, ll_rty) in
+  (* 5. get cfg *)
+  let f_cfg, g_decl = cfg_of_stream (args_code >@ block_code) in
+  let f_decl ={f_ty=f_ty; f_param=f_param; f_cfg = f_cfg} in 
+  f_decl, g_decl
 
 (* type fdecl = { f_ty : fty; f_param : uid list; f_cfg : cfg } *)
 
