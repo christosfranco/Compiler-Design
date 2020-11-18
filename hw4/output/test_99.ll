@@ -1,22 +1,11 @@
-; generated from: oatprograms/run36.oat
+; generated from: oatprograms/easyrun1.oat
 target triple = "x86_64-unknown-linux"
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_a430 = alloca { i64, [0 x i64] }*
-  %_alloca424 = alloca i64
-  store i64 %argc, i64* %_alloca424
-  %_alloca425 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca425
-  %_raw_array426 = call i64* @oat_alloc_array(i64 2)
-  %_array427 = bitcast i64* %_raw_array426 to { i64, [0 x i64] }*
-  %_ind428 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array427, i32 0, i32 1, i32 0
-  store i64 0, i64* %_ind428
-  %_ind429 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array427, i32 0, i32 1, i32 1
-  store i64 0, i64* %_ind429
-  store { i64, [0 x i64] }* %_array427, { i64, [0 x i64] }** %_a430
-  %_a431 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_a430
-  %_index_ptr433 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_a431, i32 0, i32 1, i32 1
-  %_index434 = load i64, i64* %_index_ptr433
-  ret i64 %_index434
+define i64 @program(i64 %_argc3, { i64, [0 x i8*] }* %_argv1) {
+  %_argc4 = alloca i64
+  %_argv2 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc3, i64* %_argc4
+  store { i64, [0 x i8*] }* %_argv1, { i64, [0 x i8*] }** %_argv2
+  ret i64 17
 }
 
 

@@ -1,43 +1,56 @@
-; generated from: oatprograms/lib5.oat
+; generated from: oatprograms/run38.oat
 target triple = "x86_64-unknown-linux"
-@_str_arr2028 = global [6 x i8] c"hello\00"
+define i64 @f1() {
+  %_result538 = call i64 @f2()
+  ret i64 %_result538
+}
 
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_str2029 = alloca i8*
-  %_arr2032 = alloca { i64, [0 x i64] }*
-  %_s2033 = alloca i64
-  %_i2034 = alloca i64
-  %_alloca2025 = alloca i64
-  store i64 %argc, i64* %_alloca2025
-  %_alloca2026 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca2026
-  %_str2027 = getelementptr [6 x i8], [6 x i8]* @_str_arr2028, i32 0, i32 0
-  store i8* %_str2027, i8** %_str2029
-  %_str2030 = load i8*, i8** %_str2029
-  %_result2031 = call { i64, [0 x i64] }* @array_of_string(i8* %_str2030)
-  store { i64, [0 x i64] }* %_result2031, { i64, [0 x i64] }** %_arr2032
-  store i64 0, i64* %_s2033
-  store i64 0, i64* %_i2034
-  br label %_cond2039
-_cond2039:
-  %_i2035 = load i64, i64* %_i2034
-  %_bop2036 = icmp slt i64 %_i2035, 5
-  br i1 %_bop2036, label %_body2038, label %_post2037
-_body2038:
-  %_s2040 = load i64, i64* %_s2033
-  %_arr2041 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_arr2032
-  %_i2042 = load i64, i64* %_i2034
-  %_index_ptr2044 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_arr2041, i32 0, i32 1, i64 %_i2042
-  %_index2045 = load i64, i64* %_index_ptr2044
-  %_bop2046 = add i64 %_s2040, %_index2045
-  store i64 %_bop2046, i64* %_s2033
-  %_i2047 = load i64, i64* %_i2034
-  %_bop2048 = add i64 %_i2047, 1
-  store i64 %_bop2048, i64* %_i2034
-  br label %_cond2039
-_post2037:
-  %_s2049 = load i64, i64* %_s2033
-  ret i64 %_s2049
+define i64 @f2() {
+  %_result537 = call i64 @f3()
+  ret i64 %_result537
+}
+
+define i64 @f3() {
+  %_result536 = call i64 @f4()
+  ret i64 %_result536
+}
+
+define i64 @f4() {
+  %_result535 = call i64 @f5()
+  ret i64 %_result535
+}
+
+define i64 @f5() {
+  %_result534 = call i64 @f6()
+  ret i64 %_result534
+}
+
+define i64 @f6() {
+  %_result533 = call i64 @f7()
+  ret i64 %_result533
+}
+
+define i64 @f7() {
+  %_result532 = call i64 @f8()
+  ret i64 %_result532
+}
+
+define i64 @f8() {
+  %_result531 = call i64 @f9()
+  ret i64 %_result531
+}
+
+define i64 @f9() {
+  ret i64 31
+}
+
+define i64 @program(i64 %_argc528, { i64, [0 x i8*] }* %_argv526) {
+  %_argc529 = alloca i64
+  %_argv527 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc528, i64* %_argc529
+  store { i64, [0 x i8*] }* %_argv526, { i64, [0 x i8*] }** %_argv527
+  %_result530 = call i64 @f1()
+  ret i64 %_result530
 }
 
 

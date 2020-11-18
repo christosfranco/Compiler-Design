@@ -1,25 +1,28 @@
-; generated from: oatprograms/run29.oat
+; generated from: oatprograms/run28.oat
 target triple = "x86_64-unknown-linux"
-@b = global i1 1
-@_constant291 = global i1 1
-
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_i285 = alloca i64
-  %_alloca283 = alloca i64
-  store i64 %argc, i64* %_alloca283
-  %_alloca284 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca284
-  store i64 0, i64* %_i285
-  %_b286 = load i1, i1* @b
-  br i1 %_b286, label %_then289, label %_else288
-_then289:
-  store i64 1, i64* %_i285
-  br label %_merge287
-_else288:
-  br label %_merge287
-_merge287:
-  %_i290 = load i64, i64* %_i285
-  ret i64 %_i290
+define i64 @program(i64 %_argc319, { i64, [0 x i8*] }* %_argv317) {
+  %_argc320 = alloca i64
+  %_argv318 = alloca { i64, [0 x i8*] }*
+  %_i321 = alloca i64
+  %_j325 = alloca i64
+  store i64 %_argc319, i64* %_argc320
+  store { i64, [0 x i8*] }* %_argv317, { i64, [0 x i8*] }** %_argv318
+  store i64 9, i64* %_i321
+  %_i322 = load i64, i64* %_i321
+  %_i323 = load i64, i64* %_i321
+  %_bop324 = add i64 %_i322, %_i323
+  store i64 %_bop324, i64* %_j325
+  %_i326 = load i64, i64* %_i321
+  %_i327 = load i64, i64* %_i321
+  %_i328 = load i64, i64* %_i321
+  %_bop329 = mul i64 %_i327, %_i328
+  %_bop330 = add i64 %_i326, %_bop329
+  %_j331 = load i64, i64* %_j325
+  %_bop332 = sub i64 %_bop330, %_j331
+  %_bop333 = lshr i64 %_bop332, 2
+  %_bop334 = shl i64 %_bop333, 2
+  %_bop335 = ashr i64 %_bop334, 2
+  ret i64 %_bop335
 }
 
 

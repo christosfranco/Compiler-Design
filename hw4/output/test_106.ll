@@ -1,16 +1,24 @@
-; generated from: oatprograms/run60.oat
+; generated from: oatprograms/easyrun8.oat
 target triple = "x86_64-unknown-linux"
-@i = global i64 3
-@_constant584 = global i64 3
-
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca581 = alloca i64
-  store i64 %argc, i64* %_alloca581
-  %_alloca582 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca582
-  store i64 42, i64* @i
-  %_i583 = load i64, i64* @i
-  ret i64 %_i583
+define i64 @program(i64 %_argc95, { i64, [0 x i8*] }* %_argv93) {
+  %_argc96 = alloca i64
+  %_argv94 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc95, i64* %_argc96
+  store { i64, [0 x i8*] }* %_argv93, { i64, [0 x i8*] }** %_argv94
+  %_bop97 = icmp ne i64 6, 5
+  br i1 %_bop97, label %_then108, label %_else107
+_then108:
+  %_unop98 = sub i64 0, 6
+  %_bop99 = lshr i64 5, %_unop98
+  %_bop100 = shl i64 %_bop99, 9
+  %_bop101 = ashr i64 %_bop100, 10
+  %_unop102 = xor i64 %_bop101, -1
+  %_bop103 = mul i64 %_unop102, 2
+  %_bop104 = sub i64 %_bop103, 100
+  %_bop105 = add i64 %_bop104, 6
+  ret i64 %_bop105
+_else107:
+  ret i64 2
 }
 
 

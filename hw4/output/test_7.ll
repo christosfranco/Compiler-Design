@@ -1,23 +1,23 @@
 ; generated from: oatprograms/easyrun8.oat
 target triple = "x86_64-unknown-linux"
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca79 = alloca i64
-  store i64 %argc, i64* %_alloca79
-  %_alloca80 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca80
-  %_bop81 = icmp ne i64 6, 5
-  br i1 %_bop81, label %_then92, label %_else91
-_then92:
-  %_unop82 = sub i64 0, 6
-  %_bop83 = lshr i64 5, %_unop82
-  %_bop84 = shl i64 %_bop83, 9
-  %_bop85 = ashr i64 %_bop84, 10
-  %_unop86 = xor i64 %_bop85, -1
-  %_bop87 = mul i64 %_unop86, 2
-  %_bop88 = sub i64 %_bop87, 100
-  %_bop89 = add i64 %_bop88, 6
-  ret i64 %_bop89
-_else91:
+define i64 @program(i64 %_argc95, { i64, [0 x i8*] }* %_argv93) {
+  %_argc96 = alloca i64
+  %_argv94 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc95, i64* %_argc96
+  store { i64, [0 x i8*] }* %_argv93, { i64, [0 x i8*] }** %_argv94
+  %_bop97 = icmp ne i64 6, 5
+  br i1 %_bop97, label %_then108, label %_else107
+_then108:
+  %_unop98 = sub i64 0, 6
+  %_bop99 = lshr i64 5, %_unop98
+  %_bop100 = shl i64 %_bop99, 9
+  %_bop101 = ashr i64 %_bop100, 10
+  %_unop102 = xor i64 %_bop101, -1
+  %_bop103 = mul i64 %_unop102, 2
+  %_bop104 = sub i64 %_bop103, 100
+  %_bop105 = add i64 %_bop104, 6
+  ret i64 %_bop105
+_else107:
   ret i64 2
 }
 

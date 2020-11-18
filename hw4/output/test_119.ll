@@ -1,28 +1,21 @@
-; generated from: oatprograms/run20.oat
+; generated from: oatprograms/run13.oat
 target triple = "x86_64-unknown-linux"
-define i64 @f() {
-  ret i64 19
+define i64 @f(i64 %_x291, i64 %_y289) {
+  %_x292 = alloca i64
+  %_y290 = alloca i64
+  store i64 %_x291, i64* %_x292
+  store i64 %_y289, i64* %_y290
+  %_x293 = load i64, i64* %_x292
+  ret i64 %_x293
 }
 
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_a1236 = alloca { i64, [0 x i64] }*
-  %_alloca1229 = alloca i64
-  store i64 %argc, i64* %_alloca1229
-  %_alloca1230 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca1230
-  %_raw_array1231 = call i64* @oat_alloc_array(i64 3)
-  %_array1232 = bitcast i64* %_raw_array1231 to { i64, [0 x i64] }*
-  %_ind1233 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1232, i32 0, i32 1, i32 0
-  store i64 1, i64* %_ind1233
-  %_ind1234 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1232, i32 0, i32 1, i32 1
-  store i64 100, i64* %_ind1234
-  %_ind1235 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1232, i32 0, i32 1, i32 2
-  store i64 19, i64* %_ind1235
-  store { i64, [0 x i64] }* %_array1232, { i64, [0 x i64] }** %_a1236
-  %_a1237 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_a1236
-  %_index_ptr1239 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_a1237, i32 0, i32 1, i32 2
-  %_index1240 = load i64, i64* %_index_ptr1239
-  ret i64 %_index1240
+define i64 @program(i64 %_argc286, { i64, [0 x i8*] }* %_argv284) {
+  %_argc287 = alloca i64
+  %_argv285 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc286, i64* %_argc287
+  store { i64, [0 x i8*] }* %_argv284, { i64, [0 x i8*] }** %_argv285
+  %_result288 = call i64 @f(i64 1, i64 2)
+  ret i64 %_result288
 }
 
 

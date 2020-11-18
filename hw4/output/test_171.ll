@@ -1,29 +1,43 @@
-; generated from: oatprograms/run40.oat
+; generated from: oatprograms/lib5.oat
 target triple = "x86_64-unknown-linux"
-@i = global i64 8
-@_constant477 = global i64 8
+@_str_arr2337 = global [6 x i8] c"hello\00"
 
-define i64 @f() {
-  %_j474 = alloca i64
-  store i64 0, i64* %_j474
-  %_result475 = call i64 @g()
-  store i64 %_result475, i64* %_j474
-  %_j476 = load i64, i64* %_j474
-  ret i64 %_j476
-}
-
-define i64 @g() {
-  %_i473 = load i64, i64* @i
-  ret i64 %_i473
-}
-
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca470 = alloca i64
-  store i64 %argc, i64* %_alloca470
-  %_alloca471 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca471
-  %_result472 = call i64 @f()
-  ret i64 %_result472
+define i64 @program(i64 %_argc2334, { i64, [0 x i8*] }* %_argv2332) {
+  %_argc2335 = alloca i64
+  %_argv2333 = alloca { i64, [0 x i8*] }*
+  %_str2338 = alloca i8*
+  %_arr2341 = alloca { i64, [0 x i64] }*
+  %_s2342 = alloca i64
+  %_i2343 = alloca i64
+  store i64 %_argc2334, i64* %_argc2335
+  store { i64, [0 x i8*] }* %_argv2332, { i64, [0 x i8*] }** %_argv2333
+  %_str2336 = getelementptr [6 x i8], [6 x i8]* @_str_arr2337, i32 0, i32 0
+  store i8* %_str2336, i8** %_str2338
+  %_str2339 = load i8*, i8** %_str2338
+  %_result2340 = call { i64, [0 x i64] }* @array_of_string(i8* %_str2339)
+  store { i64, [0 x i64] }* %_result2340, { i64, [0 x i64] }** %_arr2341
+  store i64 0, i64* %_s2342
+  store i64 0, i64* %_i2343
+  br label %_cond2348
+_cond2348:
+  %_i2344 = load i64, i64* %_i2343
+  %_bop2345 = icmp slt i64 %_i2344, 5
+  br i1 %_bop2345, label %_body2347, label %_post2346
+_body2347:
+  %_s2349 = load i64, i64* %_s2342
+  %_arr2350 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_arr2341
+  %_i2351 = load i64, i64* %_i2343
+  %_index_ptr2353 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_arr2350, i32 0, i32 1, i64 %_i2351
+  %_index2354 = load i64, i64* %_index_ptr2353
+  %_bop2355 = add i64 %_s2349, %_index2354
+  store i64 %_bop2355, i64* %_s2342
+  %_i2356 = load i64, i64* %_i2343
+  %_bop2357 = add i64 %_i2356, 1
+  store i64 %_bop2357, i64* %_i2343
+  br label %_cond2348
+_post2346:
+  %_s2358 = load i64, i64* %_s2342
+  ret i64 %_s2358
 }
 
 

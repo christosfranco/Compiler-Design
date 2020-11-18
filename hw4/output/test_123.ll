@@ -1,27 +1,28 @@
-; generated from: oatprograms/run25.oat
+; generated from: oatprograms/run28.oat
 target triple = "x86_64-unknown-linux"
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_a1300 = alloca { i64, [0 x i64] }*
-  %_str1303 = alloca i8*
-  %_alloca1293 = alloca i64
-  store i64 %argc, i64* %_alloca1293
-  %_alloca1294 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca1294
-  %_raw_array1295 = call i64* @oat_alloc_array(i64 3)
-  %_array1296 = bitcast i64* %_raw_array1295 to { i64, [0 x i64] }*
-  %_ind1297 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1296, i32 0, i32 1, i32 0
-  store i64 110, i64* %_ind1297
-  %_ind1298 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1296, i32 0, i32 1, i32 1
-  store i64 110, i64* %_ind1298
-  %_ind1299 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1296, i32 0, i32 1, i32 2
-  store i64 110, i64* %_ind1299
-  store { i64, [0 x i64] }* %_array1296, { i64, [0 x i64] }** %_a1300
-  %_a1301 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_a1300
-  %_result1302 = call i8* @string_of_array({ i64, [0 x i64] }* %_a1301)
-  store i8* %_result1302, i8** %_str1303
-  %_str1304 = load i8*, i8** %_str1303
-  call void @print_string(i8* %_str1304)
-  ret i64 0
+define i64 @program(i64 %_argc319, { i64, [0 x i8*] }* %_argv317) {
+  %_argc320 = alloca i64
+  %_argv318 = alloca { i64, [0 x i8*] }*
+  %_i321 = alloca i64
+  %_j325 = alloca i64
+  store i64 %_argc319, i64* %_argc320
+  store { i64, [0 x i8*] }* %_argv317, { i64, [0 x i8*] }** %_argv318
+  store i64 9, i64* %_i321
+  %_i322 = load i64, i64* %_i321
+  %_i323 = load i64, i64* %_i321
+  %_bop324 = add i64 %_i322, %_i323
+  store i64 %_bop324, i64* %_j325
+  %_i326 = load i64, i64* %_i321
+  %_i327 = load i64, i64* %_i321
+  %_i328 = load i64, i64* %_i321
+  %_bop329 = mul i64 %_i327, %_i328
+  %_bop330 = add i64 %_i326, %_bop329
+  %_j331 = load i64, i64* %_j325
+  %_bop332 = sub i64 %_bop330, %_j331
+  %_bop333 = lshr i64 %_bop332, 2
+  %_bop334 = shl i64 %_bop333, 2
+  %_bop335 = ashr i64 %_bop334, 2
+  ret i64 %_bop335
 }
 
 

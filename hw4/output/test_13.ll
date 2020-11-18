@@ -1,17 +1,17 @@
 ; generated from: oatprograms/globals4.oat
 target triple = "x86_64-unknown-linux"
-@arr = global { i64, [4 x i64] }* @_global_arr196
-@_global_arr196 = global { i64, [4 x i64] } { i64 4, [4 x i64] [ i64 1, i64 2, i64 3, i64 4 ] }
-@_constant195 = global i64 1
-@_constant194 = global i64 2
-@_constant193 = global i64 3
-@_constant192 = global i64 4
+@arr = global { i64, [4 x i64] }* @_global_arr224
+@_global_arr224 = global { i64, [4 x i64] } { i64 4, [4 x i64] [ i64 1, i64 2, i64 3, i64 4 ] }
+@_constant223 = global i64 1
+@_constant222 = global i64 2
+@_constant221 = global i64 3
+@_constant220 = global i64 4
 
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %args) {
-  %_alloca189 = alloca i64
-  store i64 %argc, i64* %_alloca189
-  %_alloca190 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %args, { i64, [0 x i8*] }** %_alloca190
+define i64 @program(i64 %_argc217, { i64, [0 x i8*] }* %_args215) {
+  %_argc218 = alloca i64
+  %_args216 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc217, i64* %_argc218
+  store { i64, [0 x i8*] }* %_args215, { i64, [0 x i8*] }** %_args216
   ret i64 5
 }
 

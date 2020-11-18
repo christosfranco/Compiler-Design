@@ -1,42 +1,90 @@
-; generated from: oatprograms/run47.oat
+; generated from: oatprograms/run34.oat
 target triple = "x86_64-unknown-linux"
-@a = global i64 1
-@_constant1957 = global i64 1
-
-define i64 @f() {
-  %_a1954 = load i64, i64* @a
-  %_bop1955 = add i64 %_a1954, 1
-  store i64 %_bop1955, i64* @a
-  %_a1956 = load i64, i64* @a
-  ret i64 %_a1956
-}
-
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_b1936 = alloca { i64, [0 x i64] }*
-  %_alloca1931 = alloca i64
-  store i64 %argc, i64* %_alloca1931
-  %_alloca1932 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca1932
-  %_result1933 = call i64 @f()
-  %_raw_array1934 = call i64* @oat_alloc_array(i64 %_result1933)
-  %_array1935 = bitcast i64* %_raw_array1934 to { i64, [0 x i64] }*
-  store { i64, [0 x i64] }* %_array1935, { i64, [0 x i64] }** %_b1936
-  %_b1937 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_b1936
-  %_index_ptr1939 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_b1937, i32 0, i32 1, i32 0
-  store i64 0, i64* %_index_ptr1939
-  %_b1940 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_b1936
-  %_index_ptr1942 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_b1940, i32 0, i32 1, i32 1
-  store i64 1, i64* %_index_ptr1942
-  %_a1943 = load i64, i64* @a
-  %_b1944 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_b1936
-  %_index_ptr1946 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_b1944, i32 0, i32 1, i32 0
-  %_index1947 = load i64, i64* %_index_ptr1946
-  %_bop1948 = add i64 %_a1943, %_index1947
-  %_b1949 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_b1936
-  %_index_ptr1951 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_b1949, i32 0, i32 1, i32 1
-  %_index1952 = load i64, i64* %_index_ptr1951
-  %_bop1953 = add i64 %_bop1948, %_index1952
-  ret i64 %_bop1953
+define i64 @program(i64 %_argc377, { i64, [0 x i8*] }* %_argv375) {
+  %_argc378 = alloca i64
+  %_argv376 = alloca { i64, [0 x i8*] }*
+  %_a402 = alloca { i64, [0 x { i64, [0 x i64] }*] }*
+  %_s403 = alloca i64
+  %_i404 = alloca i64
+  %_j410 = alloca i64
+  store i64 %_argc377, i64* %_argc378
+  store { i64, [0 x i8*] }* %_argv375, { i64, [0 x i8*] }** %_argv376
+  %_raw_array379 = call i64* @oat_alloc_array(i64 3)
+  %_array380 = bitcast i64* %_raw_array379 to { i64, [0 x { i64, [0 x i64] }*] }*
+  %_raw_array381 = call i64* @oat_alloc_array(i64 4)
+  %_array382 = bitcast i64* %_raw_array381 to { i64, [0 x i64] }*
+  %_ind383 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array382, i32 0, i32 1, i32 0
+  store i64 0, i64* %_ind383
+  %_ind384 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array382, i32 0, i32 1, i32 1
+  store i64 1, i64* %_ind384
+  %_ind385 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array382, i32 0, i32 1, i32 2
+  store i64 2, i64* %_ind385
+  %_ind386 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array382, i32 0, i32 1, i32 3
+  store i64 3, i64* %_ind386
+  %_ind387 = getelementptr { i64, [0 x { i64, [0 x i64] }*] }, { i64, [0 x { i64, [0 x i64] }*] }* %_array380, i32 0, i32 1, i32 0
+  store { i64, [0 x i64] }* %_array382, { i64, [0 x i64] }** %_ind387
+  %_raw_array388 = call i64* @oat_alloc_array(i64 4)
+  %_array389 = bitcast i64* %_raw_array388 to { i64, [0 x i64] }*
+  %_ind390 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array389, i32 0, i32 1, i32 0
+  store i64 4, i64* %_ind390
+  %_ind391 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array389, i32 0, i32 1, i32 1
+  store i64 5, i64* %_ind391
+  %_ind392 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array389, i32 0, i32 1, i32 2
+  store i64 6, i64* %_ind392
+  %_ind393 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array389, i32 0, i32 1, i32 3
+  store i64 7, i64* %_ind393
+  %_ind394 = getelementptr { i64, [0 x { i64, [0 x i64] }*] }, { i64, [0 x { i64, [0 x i64] }*] }* %_array380, i32 0, i32 1, i32 1
+  store { i64, [0 x i64] }* %_array389, { i64, [0 x i64] }** %_ind394
+  %_raw_array395 = call i64* @oat_alloc_array(i64 4)
+  %_array396 = bitcast i64* %_raw_array395 to { i64, [0 x i64] }*
+  %_ind397 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array396, i32 0, i32 1, i32 0
+  store i64 8, i64* %_ind397
+  %_ind398 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array396, i32 0, i32 1, i32 1
+  store i64 9, i64* %_ind398
+  %_ind399 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array396, i32 0, i32 1, i32 2
+  store i64 10, i64* %_ind399
+  %_ind400 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array396, i32 0, i32 1, i32 3
+  store i64 11, i64* %_ind400
+  %_ind401 = getelementptr { i64, [0 x { i64, [0 x i64] }*] }, { i64, [0 x { i64, [0 x i64] }*] }* %_array380, i32 0, i32 1, i32 2
+  store { i64, [0 x i64] }* %_array396, { i64, [0 x i64] }** %_ind401
+  store { i64, [0 x { i64, [0 x i64] }*] }* %_array380, { i64, [0 x { i64, [0 x i64] }*] }** %_a402
+  store i64 0, i64* %_s403
+  store i64 0, i64* %_i404
+  br label %_cond409
+_cond409:
+  %_i405 = load i64, i64* %_i404
+  %_bop406 = icmp slt i64 %_i405, 3
+  br i1 %_bop406, label %_body408, label %_post407
+_body408:
+  store i64 0, i64* %_j410
+  br label %_cond415
+_cond415:
+  %_j411 = load i64, i64* %_j410
+  %_bop412 = icmp slt i64 %_j411, 4
+  br i1 %_bop412, label %_body414, label %_post413
+_body414:
+  %_s416 = load i64, i64* %_s403
+  %_a417 = load { i64, [0 x { i64, [0 x i64] }*] }*, { i64, [0 x { i64, [0 x i64] }*] }** %_a402
+  %_i418 = load i64, i64* %_i404
+  %_index_ptr420 = getelementptr { i64, [0 x { i64, [0 x i64] }*] }, { i64, [0 x { i64, [0 x i64] }*] }* %_a417, i32 0, i32 1, i64 %_i418
+  %_index421 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_index_ptr420
+  %_j422 = load i64, i64* %_j410
+  %_index_ptr424 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_index421, i32 0, i32 1, i64 %_j422
+  %_index425 = load i64, i64* %_index_ptr424
+  %_bop426 = add i64 %_s416, %_index425
+  store i64 %_bop426, i64* %_s403
+  %_j427 = load i64, i64* %_j410
+  %_bop428 = add i64 %_j427, 1
+  store i64 %_bop428, i64* %_j410
+  br label %_cond415
+_post413:
+  %_i429 = load i64, i64* %_i404
+  %_bop430 = add i64 %_i429, 1
+  store i64 %_bop430, i64* %_i404
+  br label %_cond409
+_post407:
+  %_s431 = load i64, i64* %_s403
+  ret i64 %_s431
 }
 
 

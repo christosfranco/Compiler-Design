@@ -1,56 +1,33 @@
-; generated from: oatprograms/run38.oat
+; generated from: oatprograms/easyrun3.oat
 target triple = "x86_64-unknown-linux"
-define i64 @f1() {
-  %_result467 = call i64 @f2()
-  ret i64 %_result467
-}
-
-define i64 @f2() {
-  %_result466 = call i64 @f3()
-  ret i64 %_result466
-}
-
-define i64 @f3() {
-  %_result465 = call i64 @f4()
-  ret i64 %_result465
-}
-
-define i64 @f4() {
-  %_result464 = call i64 @f5()
-  ret i64 %_result464
-}
-
-define i64 @f5() {
-  %_result463 = call i64 @f6()
-  ret i64 %_result463
-}
-
-define i64 @f6() {
-  %_result462 = call i64 @f7()
-  ret i64 %_result462
-}
-
-define i64 @f7() {
-  %_result461 = call i64 @f8()
-  ret i64 %_result461
-}
-
-define i64 @f8() {
-  %_result460 = call i64 @f9()
-  ret i64 %_result460
-}
-
-define i64 @f9() {
-  ret i64 31
-}
-
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca457 = alloca i64
-  store i64 %argc, i64* %_alloca457
-  %_alloca458 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca458
-  %_result459 = call i64 @f1()
-  ret i64 %_result459
+define i64 @program(i64 %_argc12, { i64, [0 x i8*] }* %_argv10) {
+  %_argc13 = alloca i64
+  %_argv11 = alloca { i64, [0 x i8*] }*
+  %_x14 = alloca i64
+  %_i15 = alloca i64
+  store i64 %_argc12, i64* %_argc13
+  store { i64, [0 x i8*] }* %_argv10, { i64, [0 x i8*] }** %_argv11
+  store i64 0, i64* %_x14
+  store i64 0, i64* %_i15
+  br label %_cond20
+_cond20:
+  %_i16 = load i64, i64* %_i15
+  %_bop17 = icmp slt i64 %_i16, 10
+  br i1 %_bop17, label %_body19, label %_post18
+_body19:
+  %_x21 = load i64, i64* %_x14
+  %_i22 = load i64, i64* %_i15
+  %_bop23 = add i64 %_x21, %_i22
+  %_i24 = load i64, i64* %_i15
+  %_bop25 = mul i64 %_bop23, %_i24
+  store i64 %_bop25, i64* %_x14
+  %_i26 = load i64, i64* %_i15
+  %_bop27 = add i64 %_i26, 1
+  store i64 %_bop27, i64* %_i15
+  br label %_cond20
+_post18:
+  %_x28 = load i64, i64* %_x14
+  ret i64 %_x28
 }
 
 

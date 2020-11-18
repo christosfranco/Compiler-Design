@@ -1,20 +1,20 @@
 ; generated from: oatprograms/globals2.oat
 target triple = "x86_64-unknown-linux"
 @y = global i1 1
-@_constant185 = global i1 1
+@_constant209 = global i1 1
 
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %args) {
-  %_alloca179 = alloca i64
-  store i64 %argc, i64* %_alloca179
-  %_alloca180 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %args, { i64, [0 x i8*] }** %_alloca180
-  %_y181 = load i1, i1* @y
-  br i1 %_y181, label %_then184, label %_else183
-_then184:
+define i64 @program(i64 %_argc203, { i64, [0 x i8*] }* %_args201) {
+  %_argc204 = alloca i64
+  %_args202 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc203, i64* %_argc204
+  store { i64, [0 x i8*] }* %_args201, { i64, [0 x i8*] }** %_args202
+  %_y205 = load i1, i1* @y
+  br i1 %_y205, label %_then208, label %_else207
+_then208:
   ret i64 17
-_else183:
-  br label %_merge182
-_merge182:
+_else207:
+  br label %_merge206
+_merge206:
   ret i64 15
 }
 

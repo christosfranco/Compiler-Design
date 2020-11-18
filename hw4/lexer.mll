@@ -135,9 +135,6 @@ let (symbol_table : (string, Parser.token) Hashtbl.t) = Hashtbl.create 1024
 
   (* Lexing directives *)
   let lnum = ref 1
-  let mode = ref 0
-  let counter= ref 0
-  let scounter = ref 0
 }
 
 (* Declare your aliases (let foo = regex) and rules here. *)
@@ -151,11 +148,6 @@ let hexdigit = ['0'-'9'] | ['a'-'f'] | ['A'-'F']
 
 (* Boolean can be these *)
 let boolean = "false" | "true"
-
-(* Arrayes *)
-let intarr = "int"(whitespace)*"[]"
-let stringarr = "string"(whitespace)*"[]"
-let boolarr = "bool"(whitespace)*"[]"
 
 rule token = parse
   | eof { EOF }
@@ -171,21 +163,9 @@ rule token = parse
   | whitespace+ { token lexbuf }
   | newline { newline lexbuf; token lexbuf }
   
-  | "=" {mode:=0; create_token lexbuf}
-
-  | "int" {mode:=1; TINT}
-  | "string" {mode:=1; TSTRING}
-  | "bool" {mode:=1; TBOOL}
-  | "void" {mode:=1; TVOID}
-  
-  | "new" {mode:= 1; create_token lexbuf}
-  | "if" {mode:= 1; create_token lexbuf}
-  | "while" {mode:= 1; create_token lexbuf}
-  | "for" {mode:= 1; create_token lexbuf}
-
   | ';' | ',' | '{' | '}' | '+' | '-' | '*' | '=' | "==" 
   | "!=" | '!' | '~' | '(' | ')' | '[' | ']'
-  | '<' | "<=" | '>' | ">=" | "=>" | '&' | '|' | "->" 
+  | '<' | "<=" | '>' | ">=" | "=>" | '&' | '|' 
   | "[|]" | "[&]" | "<<" | ">>" | ">>>"
     { create_token lexbuf }
 

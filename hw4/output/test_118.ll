@@ -1,26 +1,21 @@
-; generated from: oatprograms/run19.oat
+; generated from: oatprograms/path3.oat
 target triple = "x86_64-unknown-linux"
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_i1218 = alloca i64
-  %_a1224 = alloca { i64, [0 x i64] }*
-  %_alloca1216 = alloca i64
-  store i64 %argc, i64* %_alloca1216
-  %_alloca1217 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca1217
-  store i64 999, i64* %_i1218
-  %_raw_array1219 = call i64* @oat_alloc_array(i64 3)
-  %_array1220 = bitcast i64* %_raw_array1219 to { i64, [0 x i64] }*
-  %_ind1221 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1220, i32 0, i32 1, i32 0
-  store i64 1, i64* %_ind1221
-  %_ind1222 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1220, i32 0, i32 1, i32 1
-  store i64 100, i64* %_ind1222
-  %_ind1223 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1220, i32 0, i32 1, i32 2
-  store i64 999, i64* %_ind1223
-  store { i64, [0 x i64] }* %_array1220, { i64, [0 x i64] }** %_a1224
-  %_a1225 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_a1224
-  %_index_ptr1227 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_a1225, i32 0, i32 1, i32 2
-  %_index1228 = load i64, i64* %_index_ptr1227
-  ret i64 %_index1228
+@arr = global { i64, [4 x i64] }* @_global_arr283
+@_global_arr283 = global { i64, [4 x i64] } { i64 4, [4 x i64] [ i64 1, i64 2, i64 3, i64 4 ] }
+@_constant282 = global i64 1
+@_constant281 = global i64 2
+@_constant280 = global i64 3
+@_constant279 = global i64 4
+
+define i64 @program(i64 %_argc272, { i64, [0 x i8*] }* %_args270) {
+  %_argc273 = alloca i64
+  %_args271 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc272, i64* %_argc273
+  store { i64, [0 x i8*] }* %_args270, { i64, [0 x i8*] }** %_args271
+  %_arr274 = load { i64, [4 x i64] }*, { i64, [4 x i64] }** @arr
+  %_index_ptr276 = getelementptr { i64, [4 x i64] }, { i64, [4 x i64] }* %_arr274, i32 0, i32 1, i32 2
+  %_index277 = load i64, i64* %_index_ptr276
+  ret i64 %_index277
 }
 
 

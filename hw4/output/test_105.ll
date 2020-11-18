@@ -1,15 +1,19 @@
-; generated from: oatprograms/run50.oat
+; generated from: oatprograms/easyrun7.oat
 target triple = "x86_64-unknown-linux"
-@_str_arr579 = global [6 x i8] c"abcde\00"
-
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca576 = alloca i64
-  store i64 %argc, i64* %_alloca576
-  %_alloca577 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca577
-  %_str578 = getelementptr [6 x i8], [6 x i8]* @_str_arr579, i32 0, i32 0
-  call void @print_string(i8* %_str578)
-  ret i64 0
+define i64 @program(i64 %_argc84, { i64, [0 x i8*] }* %_argv82) {
+  %_argc85 = alloca i64
+  %_argv83 = alloca { i64, [0 x i8*] }*
+  store i64 %_argc84, i64* %_argc85
+  store { i64, [0 x i8*] }* %_argv82, { i64, [0 x i8*] }** %_argv83
+  %_unop86 = xor i64 5, -1
+  %_bop87 = and i64 %_unop86, 6
+  %_bop88 = or i64 2, 0
+  %_bop89 = icmp sge i64 %_bop87, %_bop88
+  br i1 %_bop89, label %_then92, label %_else91
+_then92:
+  ret i64 23
+_else91:
+  ret i64 46
 }
 
 

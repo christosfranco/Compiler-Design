@@ -1,19 +1,18 @@
-; generated from: oatprograms/easyrun7.oat
+; generated from: oatprograms/lib8.oat
 target triple = "x86_64-unknown-linux"
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca70 = alloca i64
-  store i64 %argc, i64* %_alloca70
-  %_alloca71 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca71
-  %_unop72 = xor i64 5, -1
-  %_bop73 = and i64 %_unop72, 6
-  %_bop74 = or i64 2, 0
-  %_bop75 = icmp sge i64 %_bop73, %_bop74
-  br i1 %_bop75, label %_then78, label %_else77
-_then78:
-  ret i64 23
-_else77:
-  ret i64 46
+@_str_arr2436 = global [13 x i8] c"Hello world!\00"
+
+define i64 @program(i64 %_argc2433, { i64, [0 x i8*] }* %_argv2431) {
+  %_argc2434 = alloca i64
+  %_argv2432 = alloca { i64, [0 x i8*] }*
+  %_str2437 = alloca i8*
+  store i64 %_argc2433, i64* %_argc2434
+  store { i64, [0 x i8*] }* %_argv2431, { i64, [0 x i8*] }** %_argv2432
+  %_str2435 = getelementptr [13 x i8], [13 x i8]* @_str_arr2436, i32 0, i32 0
+  store i8* %_str2435, i8** %_str2437
+  %_str2438 = load i8*, i8** %_str2437
+  call void @print_string(i8* %_str2438)
+  ret i64 0
 }
 
 

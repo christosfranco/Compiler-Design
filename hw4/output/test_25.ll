@@ -1,15 +1,25 @@
-; generated from: oatprograms/run30.oat
+; generated from: oatprograms/run29.oat
 target triple = "x86_64-unknown-linux"
-@i = global i64 9
-@_constant295 = global i64 9
+@b = global i1 1
+@_constant346 = global i1 1
 
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_alloca292 = alloca i64
-  store i64 %argc, i64* %_alloca292
-  %_alloca293 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca293
-  %_i294 = load i64, i64* @i
-  ret i64 %_i294
+define i64 @program(i64 %_argc338, { i64, [0 x i8*] }* %_argv336) {
+  %_argc339 = alloca i64
+  %_argv337 = alloca { i64, [0 x i8*] }*
+  %_i340 = alloca i64
+  store i64 %_argc338, i64* %_argc339
+  store { i64, [0 x i8*] }* %_argv336, { i64, [0 x i8*] }** %_argv337
+  store i64 0, i64* %_i340
+  %_b341 = load i1, i1* @b
+  br i1 %_b341, label %_then344, label %_else343
+_then344:
+  store i64 1, i64* %_i340
+  br label %_merge342
+_else343:
+  br label %_merge342
+_merge342:
+  %_i345 = load i64, i64* %_i340
+  ret i64 %_i345
 }
 
 

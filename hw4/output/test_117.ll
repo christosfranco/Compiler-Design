@@ -1,24 +1,18 @@
-; generated from: oatprograms/run18.oat
+; generated from: oatprograms/path2.oat
 target triple = "x86_64-unknown-linux"
-define i64 @program(i64 %argc, { i64, [0 x i8*] }* %argv) {
-  %_a1211 = alloca { i64, [0 x i64] }*
-  %_alloca1204 = alloca i64
-  store i64 %argc, i64* %_alloca1204
-  %_alloca1205 = alloca { i64, [0 x i8*] }*
-  store { i64, [0 x i8*] }* %argv, { i64, [0 x i8*] }** %_alloca1205
-  %_raw_array1206 = call i64* @oat_alloc_array(i64 3)
-  %_array1207 = bitcast i64* %_raw_array1206 to { i64, [0 x i64] }*
-  %_ind1208 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1207, i32 0, i32 1, i32 0
-  store i64 1, i64* %_ind1208
-  %_ind1209 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1207, i32 0, i32 1, i32 1
-  store i64 100, i64* %_ind1209
-  %_ind1210 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_array1207, i32 0, i32 1, i32 2
-  store i64 999, i64* %_ind1210
-  store { i64, [0 x i64] }* %_array1207, { i64, [0 x i64] }** %_a1211
-  %_a1212 = load { i64, [0 x i64] }*, { i64, [0 x i64] }** %_a1211
-  %_index_ptr1214 = getelementptr { i64, [0 x i64] }, { i64, [0 x i64] }* %_a1212, i32 0, i32 1, i32 2
-  %_index1215 = load i64, i64* %_index_ptr1214
-  ret i64 %_index1215
+define i64 @program(i64 %_argc263, { i64, [0 x i8*] }* %_argv261) {
+  %_argc264 = alloca i64
+  %_argv262 = alloca { i64, [0 x i8*] }*
+  %_x265 = alloca i64
+  %_y266 = alloca i64
+  store i64 %_argc263, i64* %_argc264
+  store { i64, [0 x i8*] }* %_argv261, { i64, [0 x i8*] }** %_argv262
+  store i64 17, i64* %_x265
+  store i64 18, i64* %_y266
+  %_x267 = load i64, i64* %_x265
+  %_y268 = load i64, i64* %_y266
+  %_bop269 = add i64 %_x267, %_y268
+  ret i64 %_bop269
 }
 
 
