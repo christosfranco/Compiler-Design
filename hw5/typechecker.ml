@@ -46,13 +46,30 @@ let typ_of_unop : Ast.unop -> Ast.ty * Ast.ty = function
       relation. We have included a template for subtype_ref to get you started.
       (Don't forget about OCaml's 'and' keyword.)
 *)
+(* Types *)
 let rec subtype (c : Tctxt.t) (t1 : Ast.ty) (t2 : Ast.ty) : bool =
-  failwith "todo: subtype"
+  match t1, t2 with
+  | TInt, TInt | TBool, TBool -> true
+  | TNullRef refty1, TNullRef refty2 | TRef refty1, TNullRef refty2
+  | TRef refty1, TRef refty2 -> subtype_ref c refty1 refty2
+  | _ -> false 
 
+(* Reference types *)
 (* Decides whether H |-r ref1 <: ref2 *)
 and subtype_ref (c : Tctxt.t) (t1 : Ast.rty) (t2 : Ast.rty) : bool =
-  failwith "todo: subtype_ref"
+  match t1 , t2 with
+  | RString , RString -> true
+  | RStruct id1 , RStruct id2   -> subtype_struct c id1 id2
+  | RArray ty1 , RArray ty2     -> ty1 = ty2
+  | RFun ( args1 , ret1 ) , RFun ( args2 , ret2 ) -> subtype_fun c args1 ret1 args2 ret2
+  | _ -> false
 
+and subtype_struct (c : Tctxt.t) (id1 : Ast.id) (id2 : Ast.id) : bool =
+  failwith "todo subtype struct"
+
+
+and subtype_fun (c : Tctxt.t) (args1 : Ast.ty list ) (ret1 : Ast.ret_ty) (args2 : Ast.ty list ) (ret2 : Ast.ret_ty) : bool =
+  failwith "todo subtype fun"
 
 (* well-formed types -------------------------------------------------------- *)
 (* Implement a (set of) functions that check that types are well formed according
