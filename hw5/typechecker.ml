@@ -133,11 +133,18 @@ and typecheck_ref_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.rty) : unit =
   | RString -> ()
   | RArray ty -> typecheck_ty l tc ty
   | RStruct id -> 
-    match Tctxt.lookup_struct_option id tc with
+    begin match Tctxt.lookup_struct_option id tc with
+      (* typeerror takes some node and msg *)
       | None -> type_error l "None Struct in typecheck_ref_ty"
-  | _ -> ()
+      | Some _ -> ()
+    end
+  | RFun (parameters , ret_ty) -> 
+    (* Check one parameter *)
+    let typecheck_param param = typecheck_ty l tc param in
+    (* Iterate through list of parameter from fun *)
+    List.iter typecheck_param parameters;
+    typecheck_ret_ty l tc ret_ty
 
-(* typeerror takes come node and msg *)
 and typecheck_ret_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ret_ty) : unit =
   match t with
   | RetVoid -> ()
