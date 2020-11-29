@@ -95,7 +95,7 @@ and subtype_struct (c : Tctxt.t) (id1 : Ast.id) (id2 : Ast.id) : bool =
 
 and subtype_fun (c : Tctxt.t) (args1 : Ast.ty list ) (ret1 : Ast.ret_ty) (args2 : Ast.ty list ) (ret2 : Ast.ret_ty) : bool =
   let same_length = List.length args1 = List.length args2 in
-  let check_arg_typ ans arg1 arg2 = ans && subtype c arg1 arg2 in
+  let check_arg_typ ans arg1 arg2 = ans && subtype c arg2 arg1 in
   let same_args = same_length && List.fold_left2 check_arg_typ true args1 args2 in
   let same_return = subtype_ret_ty c ret1 ret2 in
   same_args && same_return
@@ -103,6 +103,7 @@ and subtype_fun (c : Tctxt.t) (args1 : Ast.ty list ) (ret1 : Ast.ret_ty) (args2 
 
 and subtype_ret_ty (c : Tctxt.t ) ( ret1 : Ast.ret_ty ) ( ret2 : Ast.ret_ty ) : bool =
   match ret1 , ret2 with
+  (* possibly change to _ , RetVoid . Depends on the Rules does can t1 be anything or is Retval higher t2  *)
   | RetVoid , RetVoid -> true
   | RetVal ty1 , RetVal ty2 -> subtype c ty1 ty2
   | _ -> false
@@ -123,7 +124,24 @@ and subtype_ret_ty (c : Tctxt.t ) ( ret1 : Ast.ret_ty ) ( ret2 : Ast.ret_ty ) : 
     - tc contains the structure definition context
  *)
 let rec typecheck_ty (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ty) : unit =
-  failwith "todo: implement typecheck_ty"
+  match t with
+  | TInt | TBool -> ()
+  | TRef ref_ty | TNullRef ref_ty -> typecheck_ref_ty l tc ref_ty
+
+and typecheck_ref_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.rty) : unit =
+  match t with
+  | RString -> ()
+  | RArray ty -> typecheck_ty l tc ty
+  | RStruct id -> 
+    match Tctxt.lookup_struct_option id tc with
+      | None -> type_error l "None Struct in typecheck_ref_ty"
+  | _ -> ()
+
+(* typeerror takes come node and msg *)
+and typecheck_ret_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ret_ty) : unit =
+  match t with
+  | RetVoid -> ()
+  | RetVal ty -> typecheck_ty l tc ty
 
 (* typechecking expressions ------------------------------------------------- *)
 (* Typechecks an expression in the typing context c, returns the type of the
