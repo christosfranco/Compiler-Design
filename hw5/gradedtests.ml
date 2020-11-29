@@ -468,13 +468,25 @@ let hw5_tests : suite = [
 ; GradedTest("fptr tests", 4, executed_oat_file fptr_tests)
 ]
 
+let unit_tests2 = [
+  "subtype_stringQ_stringQ",
+   (fun () ->
+       if Typechecker.subtype Tctxt.empty (TNullRef RString) (TNullRef RString) then ()
+       else failwith "should not fail")                                                                                     
+; ("no_subtype_stringQ_stringQ",
+   (fun () ->
+       if Typechecker.subtype Tctxt.empty (TNullRef RString) (TRef RString) then
+         failwith "should not succeed" else ())
+  )
+  (* make the oatprogram here the one similar to hardprograms *)
+]
 
 let manual_tests : suite = [
     GradedTest ("Additional hidden automated tests", 10,
               [("manually", assert_eq true false)]
     )
   ; GradedTest ("the three test cases (positive/negative/new oat feature)", 10,
-              [("manually", assert_eq true false)]
+               unit_tests2
     )
   ]
 

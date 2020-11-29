@@ -59,17 +59,53 @@ let rec subtype (c : Tctxt.t) (t1 : Ast.ty) (t2 : Ast.ty) : bool =
 and subtype_ref (c : Tctxt.t) (t1 : Ast.rty) (t2 : Ast.rty) : bool =
   match t1 , t2 with
   | RString , RString -> true
-  | RStruct id1 , RStruct id2   -> subtype_struct c id1 id2
+  | RStruct id1 , RStruct id2   -> if id1 = id2 then true else subtype_struct c id1 id2
   | RArray ty1 , RArray ty2     -> ty1 = ty2
   | RFun ( args1 , ret1 ) , RFun ( args2 , ret2 ) -> subtype_fun c args1 ret1 args2 ret2
   | _ -> false
 
+
+(* let lookup_struct id c = List.assoc id c.structs
+let lookup_struct_option id c =
+  try Some (lookup_struct id c) with Not_found -> None *)
+  (* 
+let lookup_field_option st_name f_name c =
+  let rec lookup_field_aux f_name l =
+    match l with
+    | [] -> None
+    | h :: t -> if h.fieldName = f_name then Some h.ftyp else lookup_field_aux f_name t in
+  match lookup_struct_option st_name c with
+  | None -> None
+  | Some x -> lookup_field_aux f_name x
+
+ *)
 and subtype_struct (c : Tctxt.t) (id1 : Ast.id) (id2 : Ast.id) : bool =
-  failwith "todo subtype struct"
+  match Tctxt.lookup_struct_option id2 c with
+  | None -> false
+  | Some fields -> 
+  
+    let lookup ans field =
+      let res = Tctxt.lookup_field_option id1 field.fieldName c in
+      match res with 
+      | None -> false
+      | Some ftyp -> ftyp = field.ftyp 
+    in
+    List.fold_left lookup true fields
 
 
 and subtype_fun (c : Tctxt.t) (args1 : Ast.ty list ) (ret1 : Ast.ret_ty) (args2 : Ast.ty list ) (ret2 : Ast.ret_ty) : bool =
-  failwith "todo subtype fun"
+  let same_length = List.length args1 = List.length args2 in
+  let check_arg_typ ans arg1 arg2 = ans && subtype c arg1 arg2 in
+  let same_args = same_length && List.fold_left2 check_arg_typ true args1 args2 in
+  let same_return = subtype_ret_ty c ret1 ret2 in
+  same_args && same_return
+
+
+and subtype_ret_ty (c : Tctxt.t ) ( ret1 : Ast.ret_ty ) ( ret2 : Ast.ret_ty ) : bool =
+  match ret1 , ret2 with
+  | RetVoid , RetVoid -> true
+  | RetVal ty1 , RetVal ty2 -> subtype c ty1 ty2
+  | _ -> false
 
 (* well-formed types -------------------------------------------------------- *)
 (* Implement a (set of) functions that check that types are well formed according
