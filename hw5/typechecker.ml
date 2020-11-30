@@ -134,7 +134,7 @@ and typecheck_ref_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.rty) : unit =
   | RArray ty -> typecheck_ty l tc ty
   | RStruct id -> 
     begin match Tctxt.lookup_struct_option id tc with
-      (* typeerror takes some node and msg *)
+    (* typeerror takes some node and msg *)
       | None -> type_error l "None Struct in typecheck_ref_ty"
       | Some _ -> ()
     end
