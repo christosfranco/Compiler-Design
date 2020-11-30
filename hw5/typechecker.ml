@@ -244,10 +244,14 @@ let rec expand_context (tc : Tctxt.t) (args : (ty * id) list) : Tctxt.t =
   | (x,y)::tail -> expand_context (add_local tc y x) tail
 
 let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
-  let t = expand_context tc f.args in
-  List.map (fun stm_node -> typecheck_stmt t stm_node f.frtyp) f.body;
-  
-  type_error l "typecheck_fdecl not implemented yet"
+  let initial = expand_context tc f.args in
+  let rec aux (current: Tctxt.t) (statements: block) : unit = 
+    begin match statements with 
+    | [] -> ()
+    | l::ls -> let (next, flag) = typecheck_stmt current l f.frtyp in
+              aux next ls
+    end in
+  aux initial f.body
 
 (* creating the typchecking context ----------------------------------------- *)
 
