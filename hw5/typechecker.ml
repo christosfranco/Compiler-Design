@@ -212,8 +212,19 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
-  failwith "todo: implement typecheck_stmt"
-
+  (*begin match s.elt with
+  | Assn of exp node * exp node
+  | Decl of vdecl
+  | Ret of exp node option
+  | SCall of exp node * exp node list
+  | If of exp node * stmt node list * stmt node list
+  | Cast of rty * id * exp node * stmt node list * stmt node list
+  | For of vdecl list * exp node option * stmt node option * stmt node list
+  | While of exp node * stmt node list
+  end*)
+  begin match s.elt with
+  | _ -> type_error s ("This kind of statement has not yet been implemented")
+  end
 
 (* struct type declarations ------------------------------------------------- *)
 (* Here is an example of how to implement the TYP_TDECLOK rule, which is 
@@ -238,8 +249,20 @@ let typecheck_tdecl (tc : Tctxt.t) id fs  (l : 'a Ast.node) : unit =
     - typechecks the body of the function (passing in the expected return type
     - checks that the function actually returns
 *)
+let rec expand_context (tc : Tctxt.t) (args : (ty * id) list) : Tctxt.t =
+  match args with 
+  | [] -> tc
+  | (x,y)::tail -> expand_context (add_local tc y x) tail
+
 let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
-  failwith "todo: typecheck_fdecl"
+  let initial = expand_context tc f.args in
+  let rec aux (current: Tctxt.t) (statements: block) : unit = 
+    begin match statements with 
+    | [] -> ()
+    | l::ls ->  let (next, flag) = typecheck_stmt current l f.frtyp in
+                aux next ls
+    end in
+  aux initial f.body
 
 (* creating the typchecking context ----------------------------------------- *)
 
@@ -269,14 +292,19 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
    constants, but can't mention other global values *)
 
 let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
-  failwith "todo: create_struct_ctxt"
+  let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
+    begin match decl with 
+    | Gtdecl node -> add_struct current (fst node.elt) (snd node.elt)
+    | _ -> current
+    end in
+  List.fold_left aux empty p
+
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  failwith "todo: create_function_ctxt"
+  tc
 
 let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  failwith "todo: create_function_ctxt"
-
+  tc
 
 (* This function implements the |- prog and the H ; G |- prog 
    rules of the oat.pdf specification.   
