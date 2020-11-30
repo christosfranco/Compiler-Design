@@ -212,8 +212,19 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
-  type_error s "typecheck_stmt not implemented yet"
-
+  (*begin match s.elt with
+  | Assn of exp node * exp node
+  | Decl of vdecl
+  | Ret of exp node option
+  | SCall of exp node * exp node list
+  | If of exp node * stmt node list * stmt node list
+  | Cast of rty * id * exp node * stmt node list * stmt node list
+  | For of vdecl list * exp node option * stmt node option * stmt node list
+  | While of exp node * stmt node list
+  end*)
+  begin match s.elt with
+  | _ -> type_error s ("This kind of statement has not yet been implemented")
+  end
 
 (* struct type declarations ------------------------------------------------- *)
 (* Here is an example of how to implement the TYP_TDECLOK rule, which is 
@@ -248,8 +259,8 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
   let rec aux (current: Tctxt.t) (statements: block) : unit = 
     begin match statements with 
     | [] -> ()
-    | l::ls -> let (next, flag) = typecheck_stmt current l f.frtyp in
-              aux next ls
+    | l::ls ->  let (next, flag) = typecheck_stmt current l f.frtyp in
+                aux next ls
     end in
   aux initial f.body
 
