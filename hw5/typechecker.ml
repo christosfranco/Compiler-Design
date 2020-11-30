@@ -212,7 +212,7 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
-  failwith "todo: implement typecheck_stmt"
+  type_error s "typecheck_stmt not implemented yet"
 
 
 (* struct type declarations ------------------------------------------------- *)
@@ -238,8 +238,15 @@ let typecheck_tdecl (tc : Tctxt.t) id fs  (l : 'a Ast.node) : unit =
     - typechecks the body of the function (passing in the expected return type
     - checks that the function actually returns
 *)
+let rec expand_context (tc : Tctxt.t) (args : (ty * id) list) : Tctxt.t =
+  match args with 
+  | [] -> tc
+  | (x,y)::tail -> expand_context (add_local tc y x) tail
+
 let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
-  failwith "todo: typecheck_fdecl"
+  let t = expand_context tc f.args in
+  List.map (fun stm_node -> typecheck_stmt t stm_node f.frtyp) f.body;
+  type_error l "typecheck_fdecl not implemented yet"
 
 (* creating the typchecking context ----------------------------------------- *)
 
@@ -269,14 +276,19 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
    constants, but can't mention other global values *)
 
 let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
-  failwith "todo: create_struct_ctxt"
+  let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
+    begin match decl with 
+    | Gtdecl node -> add_struct current (fst node.elt) (snd node.elt)
+    | _ -> current
+    end in
+  List.fold_left aux empty p
+
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  failwith "todo: create_function_ctxt"
+  tc
 
 let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  failwith "todo: create_function_ctxt"
-
+  tc
 
 (* This function implements the |- prog and the H ; G |- prog 
    rules of the oat.pdf specification.   
