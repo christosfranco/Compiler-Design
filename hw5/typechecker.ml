@@ -192,8 +192,16 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      if (typecheck_exp c exp) = ty then () else type_error e ("Array Elements don't have expected type") in
                                      List.map aux exp_list; TRef (RArray ty)
 
-  | NewArr  (ty, exp1, id, exp2)  -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
-  | Index   (exp1, exp2)          -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
+  | NewArr  (ty, exp1, id, exp2)  -> let exp1_type = typecheck_exp c exp1 in 
+                                     let expanded_ctxt = add_local c id TInt in
+                                     let exp2_type = typecheck_exp expanded_ctxt exp2 in 
+                                     begin match (exp1_type, exp2_type) with
+                                     | (TInt, ty) -> TRef (RArray ty)
+                                     | (TInt, _) -> type_error e ("Array initialized with wrong type")
+                                     | (_ , _) -> type_error e ("Array size needs to be an int")
+                                     end
+
+  | Index   (exp1, exp2)          -> type_error e ("Expressiontype 'Index' has not yet been implemented")
   | Length   exp                  -> type_error e ("Expressiontype 'Length' has not yet been implemented")                                 
   | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
   | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
