@@ -201,7 +201,14 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      | (_ , _) -> type_error e ("Array size needs to be an int")
                                      end
 
-  | Index   (exp1, exp2)          -> type_error e ("Expressiontype 'Index' has not yet been implemented")
+  | Index   (exp1, exp2)          -> let exp1_type = typecheck_exp c exp1 in 
+                                     let exp2_type = typecheck_exp c exp2 in 
+                                     begin match (exp1_type, exp2_type) with
+                                     | (TRef (RArray ty), TInt) -> ty
+                                     | (TRef (RArray ty), _) -> type_error e ("Index needs to be an int")
+                                     | (_ , _) -> type_error e ("Can only index an array")
+                                     end
+
   | Length   exp                  -> type_error e ("Expressiontype 'Length' has not yet been implemented")                                 
   | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
   | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
