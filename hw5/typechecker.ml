@@ -215,8 +215,25 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      end
 
   | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
-  | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
-  | Call    (exp, exp_list)       -> type_error e ("Expressiontype 'Call' has not yet been implemented") 
+  | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented") 
+
+  | Call    (exp, exp_list)       -> let (arg_list, ret) =
+                                     begin match typecheck_exp c exp with
+                                     | TRef (RFun (x,y)) -> (x,y)
+                                     | _ -> type_error e ("Can only call functions") 
+                                     end in
+                                     let rec check_args (exps: exp node list) (args: ty list) =
+                                     begin match (exps, args) with 
+                                     | ([], []) -> ()
+                                     | (_, []) -> type_error e ("Too many arguments") 
+                                     | ([], _) -> type_error e ("Too few arguments") 
+                                     | (exp::etail, arg::atail) -> if (typecheck_exp c exp) = arg then check_args etail atail else type_error e ("Wrong type of argument") 
+                                     end in
+                                     check_args exp_list arg_list;
+                                     begin match ret with
+                                     | RetVal ty -> ty
+                                     | _ -> type_error e ("***TEMP*** Function returns void") 
+                                     end
   
   | Bop     (op, exp1, exp2)      -> let exp1_type = typecheck_exp c exp1 in 
                                      let exp2_type = typecheck_exp c exp2 in 
