@@ -177,38 +177,41 @@ and typecheck_ret_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ret_ty) : unit =
 *)
 let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
   begin match e.elt with 
-  | CNull ref_type                  -> TNullRef ref_type
-  | CBool _                         -> TBool
-  | CInt _                          -> TInt
-  | CStr _                          -> TRef RString
+  | CNull ref_type                -> TNullRef ref_type
+  | CBool _                       -> TBool
+  | CInt _                        -> TInt
+  | CStr _                        -> TRef RString
 
-  | Id id                           -> begin match (lookup_local_option id c, lookup_global_option id c) with
-                                       | (Some ty, _) -> ty
-                                       | (_, Some ty) -> ty
-                                       | _ -> type_error e ("Can't find " ^ id)
-                                       end
+  | Id id                         -> begin match (lookup_local_option id c, lookup_global_option id c) with
+                                     | (Some ty, _) -> ty
+                                     | (_, Some ty) -> ty
+                                     | _ -> type_error e ("Can't find " ^ id)
+                                     end
 
-  | CArr (ty, exp_list)             -> type_error e ("Expressiontype 'CArr' has not yet been implemented")
-  | NewArr (ty, exp1, id, exp2)     -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
-  | Index (exp1, exp2)              -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
-  | Length exp                      -> type_error e ("Expressiontype 'Length' has not yet been implemented")                                 
-  | CStruct (struct_id, fields)     -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
-  | Proj (exp, id)                  -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
-  | Call (exp, exp_list)            -> type_error e ("Expressiontype 'Call' has not yet been implemented") 
+  | CArr    (ty, exp_list)        -> let aux (exp : Ast.exp node) : unit =
+                                     if (typecheck_exp c exp) = ty then () else type_error e ("Array Elements don't have expected type") in
+                                     List.map aux exp_list; TRef (RArray ty)
+
+  | NewArr  (ty, exp1, id, exp2)  -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
+  | Index   (exp1, exp2)          -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
+  | Length   exp                  -> type_error e ("Expressiontype 'Length' has not yet been implemented")                                 
+  | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
+  | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
+  | Call    (exp, exp_list)       -> type_error e ("Expressiontype 'Call' has not yet been implemented") 
   
-  | Bop (op, exp1, exp2)            -> let exp1_type = typecheck_exp c exp1 in 
-                                       let exp2_type = typecheck_exp c exp2 in 
-                                       begin match op with
-                                       | Add | Sub | Mul | Shl | Shr | Sar | IAnd | IOr -> if (exp1_type, exp2_type) = (TInt, TInt)   then TInt  else type_error e ("Expected TInt for arithmetic bop")
-                                       | And | Or                                       -> if (exp1_type, exp2_type) = (TBool, TBool) then TBool else type_error e ("Expected TBool for logic bop")
-                                       | Eq | Neq | Lt | Lte | Gt | Gte                 -> if (exp1_type, exp2_type) = (TInt, TInt)   then TBool else type_error e ("Expected TInt for comp bop")
-                                       end 
+  | Bop     (op, exp1, exp2)      -> let exp1_type = typecheck_exp c exp1 in 
+                                     let exp2_type = typecheck_exp c exp2 in 
+                                     begin match op with
+                                     | Add | Sub | Mul | Shl | Shr | Sar | IAnd | IOr -> if (exp1_type, exp2_type) = (TInt, TInt)   then TInt  else type_error e ("Expected TInt for arithmetic bop")
+                                     | And | Or                                       -> if (exp1_type, exp2_type) = (TBool, TBool) then TBool else type_error e ("Expected TBool for logic bop")
+                                     | Eq | Neq | Lt | Lte | Gt | Gte                 -> if (exp1_type, exp2_type) = (TInt, TInt)   then TBool else type_error e ("Expected TInt for comp bop")
+                                     end 
 
-  | Uop (op, exp)                   -> let exp_type = typecheck_exp c exp in 
-                                       begin match op with 
-                                       | Bitnot | Neg -> if (exp_type = TInt)  then TInt  else type_error e ("Expected TInt for negation")
-                                       | Lognot       -> if (exp_type = TBool) then TBool else type_error e ("Expected TBool for Lognot")
-                                       end
+  | Uop     (op, exp)             -> let exp_type = typecheck_exp c exp in 
+                                     begin match op with 
+                                     | Bitnot | Neg -> if (exp_type = TInt)  then TInt  else type_error e ("Expected TInt for negation")
+                                     | Lognot       -> if (exp_type = TBool) then TBool else type_error e ("Expected TBool for Lognot")
+                                     end
   end
 
 (* statements --------------------------------------------------------------- *)
