@@ -298,7 +298,24 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                                                          if exp_type = ty then (tc, true) else type_error s ("Returned wrong type")
                                              end
 
-  | SCall (exp, exp_list)                 -> type_error s ("Statementtype 'SCall' has not yet been implemented")
+  | SCall (exp, exp_list)                 ->  let (arg_list, ret) =
+                                              begin match typecheck_exp tc exp with
+                                              | TRef (RFun (x,y)) -> (x,y)
+                                              | _ -> type_error s ("Can only call functions") 
+                                              end in
+                                              let rec check_args (exps: exp node list) (args: ty list) =
+                                              begin match (exps, args) with 
+                                              | ([], []) -> ()
+                                              | (_, []) -> type_error s ("Too many arguments") 
+                                              | ([], _) -> type_error s ("Too few arguments") 
+                                              | (exp::etail, arg::atail) -> if (typecheck_exp tc exp) = arg then check_args etail atail else type_error s ("Wrong type of argument") 
+                                              end in
+                                              check_args exp_list arg_list;
+                                              begin match ret with
+                                              | RetVoid -> (tc, true)
+                                              | _ -> type_error s ("Function returns something") 
+                                              end
+
   | If    (cond, then_stmts, else_stmts)  -> type_error s ("Statementtype 'If' has not yet been implemented")
   | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
   | For   (vdecls, exp, stmt, stmts)      -> type_error s ("Statementtype 'For' has not yet been implemented")
