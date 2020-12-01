@@ -177,7 +177,7 @@ and typecheck_ret_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ret_ty) : unit =
 *)
 let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
   begin match e.elt with 
-  | CNull ref_type                  -> TRef ref_type
+  | CNull ref_type                  -> TNullRef ref_type
   | CBool _                         -> TBool
   | CInt _                          -> TInt
   | CStr _                          -> TRef RString
@@ -185,7 +185,7 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
   | Id id                           -> begin match (lookup_local_option id c, lookup_global_option id c) with
                                        | (Some ty, _) -> ty
                                        | (_, Some ty) -> ty
-                                       | _ -> type_error e ("Can't find" ^ id)
+                                       | _ -> type_error e ("Can't find " ^ id)
                                        end
 
   | CArr (ty, exp_list)             -> type_error e ("Expressiontype 'CArr' has not yet been implemented")
@@ -199,14 +199,14 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
   | Bop (op, exp1, exp2)            -> let exp1_type = typecheck_exp c exp1 in 
                                        let exp2_type = typecheck_exp c exp2 in 
                                        begin match op with
-                                       | Add | Sub | Mul | Shl | Shr | Sar | IAnd | IOr -> if (exp1_type, exp2_type) = (TInt, TInt) then TInt else type_error e ("Expected TInt for arithmetic bop")
-                                       | And | Or -> if (exp1_type, exp2_type) = (TBool, TBool) then TBool else type_error e ("Expected TBool for logic bop")
-                                       | Eq | Neq | Lt | Lte | Gt | Gte -> if (exp1_type, exp2_type) = (TInt, TInt) then TBool else type_error e ("Expected TInt for comp bop")
+                                       | Add | Sub | Mul | Shl | Shr | Sar | IAnd | IOr -> if (exp1_type, exp2_type) = (TInt, TInt)   then TInt  else type_error e ("Expected TInt for arithmetic bop")
+                                       | And | Or                                       -> if (exp1_type, exp2_type) = (TBool, TBool) then TBool else type_error e ("Expected TBool for logic bop")
+                                       | Eq | Neq | Lt | Lte | Gt | Gte                 -> if (exp1_type, exp2_type) = (TInt, TInt)   then TBool else type_error e ("Expected TInt for comp bop")
                                        end 
 
   | Uop (op, exp)                   -> let exp_type = typecheck_exp c exp in 
                                        begin match op with 
-                                       | Bitnot | Neg -> if (exp_type = TInt) then TInt else type_error e ("Expected TInt for negation")
+                                       | Bitnot | Neg -> if (exp_type = TInt)  then TInt  else type_error e ("Expected TInt for negation")
                                        | Lognot       -> if (exp_type = TBool) then TBool else type_error e ("Expected TBool for Lognot")
                                        end
   end
