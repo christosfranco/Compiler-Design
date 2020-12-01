@@ -316,7 +316,11 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                               | _ -> type_error s ("Function returns something") 
                                               end
 
-  | If    (cond, then_stmts, else_stmts)  -> type_error s ("Statementtype 'If' has not yet been implemented")
+  | If    (cond, then_stmts, else_stmts)  -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
+                                             type_error s ("Statementtype 'If' has not yet been implemented")
+                                             
+                                             
+  
   | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
   | For   (vdecls, exp, stmt, stmts)      -> type_error s ("Statementtype 'For' has not yet been implemented")
   | While (cond, stmt)                    -> type_error s ("Statementtype 'While' has not yet been implemented")
@@ -395,12 +399,35 @@ let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
     end in
   List.fold_left aux empty p
 
+let add_built_in_functions (t0:Tctxt.t) : Tctxt.t =
+  let t1 = add_global t0 "print_string"     (TRef (RFun ([TRef RString]       , RetVoid)))                      in
+  let t2 = add_global t1 "print_int"        (TRef (RFun ([TInt]               , RetVoid)))                      in
+  let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]              , RetVoid)))                      in
+  let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)] , RetVal (TRef RString))))        in
+  let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]       , RetVal (TRef (RArray TInt)))))  in
+  t5
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  tc
+  let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
+    begin match decl with 
+    | Gfdecl node ->  let f = node.elt in
+                      let ty = TRef (RFun ((List.map fst f.args), f.frtyp)) in
+                      let id = f.fname in
+                      add_global current id ty
+    | _ -> current
+    end in
+  List.fold_left aux (add_built_in_functions tc) p
 
 let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  tc
+  let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
+    begin match decl with 
+    | Gvdecl node ->  let id = node.elt.name in
+                      let exp = node.elt.init in
+                      let ty = typecheck_exp current exp in
+                      add_global current id ty
+    | _ -> current
+    end in
+  List.fold_left aux tc p
 
 (* This function implements the |- prog and the H ; G |- prog 
    rules of the oat.pdf specification.   
