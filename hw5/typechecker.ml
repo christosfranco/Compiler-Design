@@ -209,7 +209,11 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      | (_ , _) -> type_error e ("Can only index an array")
                                      end
 
-  | Length   exp                  -> type_error e ("Expressiontype 'Length' has not yet been implemented")                                 
+  | Length   exp                  -> begin match typecheck_exp c exp with
+                                     | TRef (RArray ty) -> TInt
+                                     | _ -> type_error e ("Can only get length of an array")
+                                     end
+
   | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
   | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
   | Call    (exp, exp_list)       -> type_error e ("Expressiontype 'Call' has not yet been implemented") 
