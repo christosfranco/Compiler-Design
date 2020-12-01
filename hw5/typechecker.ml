@@ -176,7 +176,22 @@ and typecheck_ret_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ret_ty) : unit =
 
 *)
 let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
-  failwith "todo: implement typecheck_exp"
+  begin match e.elt with 
+  | CNull ref_type                  -> TRef ref_type
+  | CBool _                         -> TBool
+  | CInt _                          -> TInt
+  | CStr _                          -> TRef RString
+  | Id id                           -> type_error e ("Expressiontype 'Id' has not yet been implemented")
+  | CArr (ty, exp_list)             -> type_error e ("Expressiontype 'CArr' has not yet been implemented")
+  | NewArr (ty, exp1, id, exp2)     -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
+  | Index (exp1, exp2)              -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
+  | Length exp                      -> type_error e ("Expressiontype 'Length' has not yet been implemented")                                 
+  | CStruct (struct_id, fields)     -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
+  | Proj (exp, id)                  -> type_error e ("Expressiontype 'Proj' has not yet been implemented")    
+  | Call (exp, exp_list)            -> type_error e ("Expressiontype 'Call' has not yet been implemented") 
+  | Bop (op, exp1, exp2)            -> type_error e ("Expressiontype 'Bop' has not yet been implemented")
+  | Uop (op, exp)                   -> type_error e ("Expressiontype 'Uop' has not yet been implemented")
+  end
 
 (* statements --------------------------------------------------------------- *)
 
@@ -212,18 +227,25 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
-  (*begin match s.elt with
-  | Assn of exp node * exp node
-  | Decl of vdecl
-  | Ret of exp node option
-  | SCall of exp node * exp node list
-  | If of exp node * stmt node list * stmt node list
-  | Cast of rty * id * exp node * stmt node list * stmt node list
-  | For of vdecl list * exp node option * stmt node option * stmt node list
-  | While of exp node * stmt node list
-  end*)
   begin match s.elt with
-  | _ -> type_error s ("This kind of statement has not yet been implemented")
+  | Assn  (exp1, exp2)                    -> type_error s ("Statementtype 'Assn' has not yet been implemented")
+  | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
+                                             let ctxt = add_local tc id exp_type in
+                                             (ctxt, true)
+
+  | Ret    exp_opt                        -> begin match (exp_opt, to_ret) with 
+                                             | (None, RetVoid)        -> (tc, true)
+                                             | (Some _, RetVoid)      -> type_error s ("Returned something instead of void")
+                                             | (None, RetVal _)       -> type_error s ("Returned nothing but expected something")
+                                             | (Some exp, RetVal ty)  -> let exp_type = typecheck_exp tc exp in 
+                                                                         if exp_type = ty then (tc, true) else type_error s ("Returned wrong type")
+                                             end
+
+  | SCall (exp, exp_list)                 -> type_error s ("Statementtype 'SCall' has not yet been implemented")
+  | If    (cond, then_stmts, else_stmts)  -> type_error s ("Statementtype 'If' has not yet been implemented")
+  | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
+  | For   (vdecls, exp, stmt, stmts)      -> type_error s ("Statementtype 'For' has not yet been implemented")
+  | While (cond, stmt)                    -> type_error s ("Statementtype 'While' has not yet been implemented")
   end
 
 (* struct type declarations ------------------------------------------------- *)
