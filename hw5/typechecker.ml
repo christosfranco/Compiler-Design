@@ -181,7 +181,13 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
   | CBool _                         -> TBool
   | CInt _                          -> TInt
   | CStr _                          -> TRef RString
-  | Id id                           -> type_error e ("Expressiontype 'Id' has not yet been implemented")
+
+  | Id id                           -> begin match (lookup_local_option id c, lookup_global_option id c) with
+                                       | (Some ty, _) -> ty
+                                       | (_, Some ty) -> ty
+                                       | _ -> type_error e ("Can't find" ^ id)
+                                       end
+
   | CArr (ty, exp_list)             -> type_error e ("Expressiontype 'CArr' has not yet been implemented")
   | NewArr (ty, exp1, id, exp2)     -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
   | Index (exp1, exp2)              -> type_error e ("Expressiontype 'NewArr' has not yet been implemented")
