@@ -176,7 +176,79 @@ and typecheck_ret_ty  (l : 'a Ast.node) (tc : Tctxt.t) (t : Ast.ret_ty) : unit =
 
 *)
 let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
-  failwith "todo: implement typecheck_exp"
+  begin match e.elt with 
+  | CNull ref_type                -> TNullRef ref_type
+  | CBool _                       -> TBool
+  | CInt _                        -> TInt
+  | CStr _                        -> TRef RString
+
+  | Id id                         -> begin match (lookup_local_option id c, lookup_global_option id c) with
+                                     | (Some ty, _) -> ty
+                                     | (_, Some ty) -> ty
+                                     | _ -> type_error e ("Can't find " ^ id)
+                                     end
+
+  | CArr    (ty, exp_list)        -> let aux (exp : Ast.exp node) : unit =
+                                     if (typecheck_exp c exp) = ty then () else type_error e ("Array Elements don't have expected type") in
+                                     List.map aux exp_list; TRef (RArray ty)
+
+  | NewArr  (ty, exp1, id, exp2)  -> let exp1_type = typecheck_exp c exp1 in 
+                                     let expanded_ctxt = add_local c id TInt in
+                                     let exp2_type = typecheck_exp expanded_ctxt exp2 in 
+                                     begin match (exp1_type, exp2_type) with
+                                     | (TInt, ty) -> TRef (RArray ty)
+                                     | (TInt, _) -> type_error e ("Array initialized with wrong type")
+                                     | (_ , _) -> type_error e ("Array size needs to be an int")
+                                     end
+
+  | Index   (exp1, exp2)          -> let exp1_type = typecheck_exp c exp1 in 
+                                     let exp2_type = typecheck_exp c exp2 in 
+                                     begin match (exp1_type, exp2_type) with
+                                     | (TRef (RArray ty), TInt) -> ty
+                                     | (TRef (RArray ty), _) -> type_error e ("Index needs to be an int")
+                                     | (_ , _) -> type_error e ("Can only index an array")
+                                     end
+
+  | Length   exp                  -> begin match typecheck_exp c exp with
+                                     | TRef (RArray ty) -> TInt
+                                     | _ -> type_error e ("Can only get length of an array")
+                                     end
+
+  | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
+  | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented") 
+
+  | Call    (exp, exp_list)       -> let (arg_list, ret) =
+                                     begin match typecheck_exp c exp with
+                                     | TRef (RFun (x,y)) -> (x,y)
+                                     | _ -> type_error e ("Can only call functions") 
+                                     end in
+                                     let rec check_args (exps: exp node list) (args: ty list) =
+                                     begin match (exps, args) with 
+                                     | ([], []) -> ()
+                                     | (_, []) -> type_error e ("Too many arguments") 
+                                     | ([], _) -> type_error e ("Too few arguments") 
+                                     | (exp::etail, arg::atail) -> if (typecheck_exp c exp) = arg then check_args etail atail else type_error e ("Wrong type of argument") 
+                                     end in
+                                     check_args exp_list arg_list;
+                                     begin match ret with
+                                     | RetVal ty -> ty
+                                     | _ -> type_error e ("***TEMP*** Function returns void") 
+                                     end
+  
+  | Bop     (op, exp1, exp2)      -> let exp1_type = typecheck_exp c exp1 in 
+                                     let exp2_type = typecheck_exp c exp2 in 
+                                     begin match op with
+                                     | Add | Sub | Mul | Shl | Shr | Sar | IAnd | IOr -> if (exp1_type, exp2_type) = (TInt, TInt)   then TInt  else type_error e ("Expected TInt for arithmetic bop")
+                                     | And | Or                                       -> if (exp1_type, exp2_type) = (TBool, TBool) then TBool else type_error e ("Expected TBool for logic bop")
+                                     | Eq | Neq | Lt | Lte | Gt | Gte                 -> if (exp1_type, exp2_type) = (TInt, TInt)   then TBool else type_error e ("Expected TInt for comp bop")
+                                     end 
+
+  | Uop     (op, exp)             -> let exp_type = typecheck_exp c exp in 
+                                     begin match op with 
+                                     | Bitnot | Neg -> if (exp_type = TInt)  then TInt  else type_error e ("Expected TInt for negation")
+                                     | Lognot       -> if (exp_type = TBool) then TBool else type_error e ("Expected TBool for Lognot")
+                                     end
+  end
 
 (* statements --------------------------------------------------------------- *)
 
@@ -212,18 +284,46 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
-  (*begin match s.elt with
-  | Assn of exp node * exp node
-  | Decl of vdecl
-  | Ret of exp node option
-  | SCall of exp node * exp node list
-  | If of exp node * stmt node list * stmt node list
-  | Cast of rty * id * exp node * stmt node list * stmt node list
-  | For of vdecl list * exp node option * stmt node option * stmt node list
-  | While of exp node * stmt node list
-  end*)
   begin match s.elt with
-  | _ -> type_error s ("This kind of statement has not yet been implemented")
+  | Assn  (exp1, exp2)                    -> type_error s ("Statementtype 'Assn' has not yet been implemented")
+  | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
+                                             let ctxt = add_local tc id exp_type in
+                                             (ctxt, true)
+
+  | Ret    exp_opt                        -> begin match (exp_opt, to_ret) with 
+                                             | (None, RetVoid)        -> (tc, true)
+                                             | (Some _, RetVoid)      -> type_error s ("Returned something instead of void")
+                                             | (None, RetVal _)       -> type_error s ("Returned nothing but expected something")
+                                             | (Some exp, RetVal ty)  -> let exp_type = typecheck_exp tc exp in 
+                                                                         if exp_type = ty then (tc, true) else type_error s ("Returned wrong type")
+                                             end
+
+  | SCall (exp, exp_list)                 ->  let (arg_list, ret) =
+                                              begin match typecheck_exp tc exp with
+                                              | TRef (RFun (x,y)) -> (x,y)
+                                              | _ -> type_error s ("Can only call functions") 
+                                              end in
+                                              let rec check_args (exps: exp node list) (args: ty list) =
+                                              begin match (exps, args) with 
+                                              | ([], []) -> ()
+                                              | (_, []) -> type_error s ("Too many arguments") 
+                                              | ([], _) -> type_error s ("Too few arguments") 
+                                              | (exp::etail, arg::atail) -> if (typecheck_exp tc exp) = arg then check_args etail atail else type_error s ("Wrong type of argument") 
+                                              end in
+                                              check_args exp_list arg_list;
+                                              begin match ret with
+                                              | RetVoid -> (tc, true)
+                                              | _ -> type_error s ("Function returns something") 
+                                              end
+
+  | If    (cond, then_stmts, else_stmts)  -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
+                                             type_error s ("Statementtype 'If' has not yet been implemented")
+                                             
+                                             
+  
+  | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
+  | For   (vdecls, exp, stmt, stmts)      -> type_error s ("Statementtype 'For' has not yet been implemented")
+  | While (cond, stmt)                    -> type_error s ("Statementtype 'While' has not yet been implemented")
   end
 
 (* struct type declarations ------------------------------------------------- *)
@@ -299,12 +399,35 @@ let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
     end in
   List.fold_left aux empty p
 
+let add_built_in_functions (t0:Tctxt.t) : Tctxt.t =
+  let t1 = add_global t0 "print_string"     (TRef (RFun ([TRef RString]       , RetVoid)))                      in
+  let t2 = add_global t1 "print_int"        (TRef (RFun ([TInt]               , RetVoid)))                      in
+  let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]              , RetVoid)))                      in
+  let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)] , RetVal (TRef RString))))        in
+  let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]       , RetVal (TRef (RArray TInt)))))  in
+  t5
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  tc
+  let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
+    begin match decl with 
+    | Gfdecl node ->  let f = node.elt in
+                      let ty = TRef (RFun ((List.map fst f.args), f.frtyp)) in
+                      let id = f.fname in
+                      add_global current id ty
+    | _ -> current
+    end in
+  List.fold_left aux (add_built_in_functions tc) p
 
 let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
-  tc
+  let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
+    begin match decl with 
+    | Gvdecl node ->  let id = node.elt.name in
+                      let exp = node.elt.init in
+                      let ty = typecheck_exp current exp in
+                      add_global current id ty
+    | _ -> current
+    end in
+  List.fold_left aux tc p
 
 (* This function implements the |- prog and the H ; G |- prog 
    rules of the oat.pdf specification.   
