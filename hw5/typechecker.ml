@@ -340,7 +340,7 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                              | (Some _, RetVoid)      -> type_error s ("Returned something instead of void")
                                              | (None, RetVal _)       -> type_error s ("Returned nothing but expected something")
                                              | (Some exp, RetVal ty)  -> let exp_type = typecheck_exp tc exp in 
-                                                                         if exp_type = ty then (tc, true) else type_error s ("Returned wrong type")
+                                                                         if subtype tc exp_type ty then (tc, true) else type_error s ("Returned wrong type")
                                              end
 
   | SCall (exp, exp_list)                 ->  let (arg_list, ret) =
