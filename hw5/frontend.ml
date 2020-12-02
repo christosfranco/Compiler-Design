@@ -116,14 +116,6 @@ module TypeCtxt = struct
     | None ->
     failwith "no such field"
     | Some x -> List.(nth fields x).ftyp, Int64.of_int x 
-
-   let rec lookup_field_name2 f (c : t) =
-    match c with
-    | [] -> failwith "lookup_field_name: Not found"
-    | (id, field) :: t -> 
-        match index_of f field 0 with
-        | None -> lookup_field_name2 f t
-        | Some x -> List.(nth field x).ftyp, Int64.of_int x
 end
 
 (* compiling OAT types ------------------------------------------------------ *)
@@ -400,9 +392,8 @@ let rec cmp_exp (tc : TypeCtxt.t) (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.ope
       let field_ind = TypeCtxt.index_of_field id f_id tc in
       let field_ptr_id, field_value_id = gensym "get_field_ptr_id", gensym "get_field_value_id" in
       let field_ptr_stream = I (field_ptr_id, Gep(struct_ty, struct_op, [Const 0L; i64_op_of_int field_ind])) in
-      let field_ty = cmp_ty tc @@ fst @@ TypeCtxt.lookup_field_name id f_id tc in
-
       (* Cast to the field_type *)
+      let field_ty = cmp_ty tc @@ fst @@ TypeCtxt.lookup_field_name id f_id tc in
       let field_value_cast_code = I ( field_value_id, Bitcast(exp_ty, exp_op, field_ty)) in
       (* Store value in ptr *)
       let store_exp_code = I ("", Store (field_ty, Id field_value_id, Id field_ptr_id)) in
