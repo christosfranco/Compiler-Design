@@ -259,7 +259,7 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      | ([], []) -> ()
                                      | (_, []) -> type_error e ("Too many arguments") 
                                      | ([], _) -> type_error e ("Too few arguments") 
-                                     | (exp::etail, arg::atail) -> if (typecheck_exp c exp) = arg then check_args etail atail else type_error e ("Wrong type of argument") 
+                                     | (exp::etail, arg::atail) -> if subtype c (typecheck_exp c exp) arg then check_args etail atail else type_error e ("Wrong type of argument") 
                                      end in
                                      check_args exp_list arg_list;
                                      begin match ret with
@@ -333,7 +333,10 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
   
   | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
                                              let ctxt = add_local tc id exp_type in
-                                             (ctxt, false)
+                                             begin match lookup_local_option id tc with 
+                                             | None -> (ctxt, false)
+                                             | Some _ -> type_error s ("Local id " ^ id ^ " already defined")
+                                             end
 
   | Ret    exp_opt                        -> begin match (exp_opt, to_ret) with 
                                              | (None, RetVoid)        -> (tc, true)
@@ -353,7 +356,7 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                               | ([], []) -> ()
                                               | (_, []) -> type_error s ("Too many arguments") 
                                               | ([], _) -> type_error s ("Too few arguments") 
-                                              | (exp::etail, arg::atail) -> if (typecheck_exp tc exp) = arg then check_args etail atail else type_error s ("Wrong type of argument") 
+                                              | (exp::etail, arg::atail) -> if subtype tc (typecheck_exp tc exp) arg then check_args etail atail else type_error s ("Wrong type of argument") 
                                               end in
                                               check_args exp_list arg_list;
                                               begin match ret with
@@ -517,7 +520,7 @@ let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
     begin match decl with 
     | Gvdecl node ->  let id = node.elt.name in
                       let exp = node.elt.init in
-                      let ty = typecheck_exp current exp in
+                      let ty = typecheck_exp tc exp in
                       begin match lookup_global_option id current with 
                       | None -> add_global current id ty
                       | Some _ -> type_error node (id ^ " has already been declared gobal")
