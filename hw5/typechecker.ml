@@ -491,7 +491,11 @@ let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
     | Gfdecl node ->  let f = node.elt in
                       let ty = TRef (RFun ((List.map fst f.args), f.frtyp)) in
                       let id = f.fname in
-                      add_global current id ty
+                      begin match lookup_global_option id current with 
+                      | None -> add_global current id ty
+                      | Some _ -> type_error node (id ^ " has already been declared func")
+                      end
+                      
     | _ -> current
     end in
   List.fold_left aux (add_built_in_functions tc) p
@@ -502,7 +506,10 @@ let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
     | Gvdecl node ->  let id = node.elt.name in
                       let exp = node.elt.init in
                       let ty = typecheck_exp current exp in
-                      add_global current id ty
+                      begin match lookup_global_option id current with 
+                      | None -> add_global current id ty
+                      | Some _ -> type_error node (id ^ " has already been declared gobal")
+                      end
     | _ -> current
     end in
   List.fold_left aux tc p
