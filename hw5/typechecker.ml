@@ -372,13 +372,23 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                               end
 
   | If    (cond, then_stmts, else_stmts)  -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
-                                             let (ctxt1, flag1) = typecheck_stmts tc then_stmts in
-                                             let (ctxt2, flag2) = typecheck_stmts tc else_stmts in
+                                             let (_, flag1) = typecheck_stmts tc then_stmts in
+                                             let (_, flag2) = typecheck_stmts tc else_stmts in
                                              (tc, (flag1 && flag2))
                                              
                                              
   
-  | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
+  | Cast  (rty, id, exp, stmts1, stmts2)  ->  let ty = begin match typecheck_exp tc exp with
+                                              | TNullRef x -> TRef x
+                                              | x -> x
+                                              end in
+                                              let ctxt = begin match (lookup_local_option id tc) with
+                                              | None -> add_local tc id ty
+                                              | Some x -> type_error s (id ^ " already defined")
+                                              end in
+                                              let (_, flag1) = typecheck_stmts ctxt stmts1 in
+                                              let (_, flag2) = typecheck_stmts ctxt stmts2 in
+                                              (tc, (flag1 && flag2))
 
   | For   (vdecls,cond_opt,stmt_opt,stmts)-> let rec aux (decls: vdecl list) (current: Tctxt.t) : Tctxt.t =
                                              begin match decls with 
@@ -400,11 +410,11 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                              | None -> (tc, false)
                                              | Some stmt -> typecheck_stmt ctxt stmt to_ret
                                              end;
-                                             let (ctxt, flag) = typecheck_stmts ctxt stmts in
+                                             let _ = typecheck_stmts ctxt stmts in
                                              (tc, false)
 
   | While (cond, stmts)                   -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
-                                             let (ctxt, flag) = typecheck_stmts tc stmts in
+                                             let _ = typecheck_stmts tc stmts in
                                              (tc, false)
 
   end
