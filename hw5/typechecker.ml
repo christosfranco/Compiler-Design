@@ -328,6 +328,13 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
   begin match s.elt with
   | Assn  (loc_exp, value_exp)            -> let value_type = typecheck_exp tc value_exp in 
                                              let loc_type = typecheck_exp tc loc_exp in 
+                                             begin match loc_exp.elt with
+                                             | Id id -> begin match  (lookup_global_option id tc) with
+                                                        | Some (TRef (RFun _)) -> type_error s ("Can't assign to global functions.")
+                                                        | _ -> ()
+                                                        end
+                                             | _ -> ()
+                                             end;
                                              if subtype tc value_type loc_type then (tc, false) else
                                              type_error s ("Assn types do not match")
   
