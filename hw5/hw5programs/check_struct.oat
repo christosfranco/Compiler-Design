@@ -1,0 +1,19 @@
+struct Check {
+  int x;
+  int y
+}
+
+Check new_check( int a , int b) {
+  return new Check { x = a ; y = b} ;
+}
+
+int program(int argc, string[] argv) {
+  var check1 = new_check(1, 1);
+  var fst = (check1.x == 1);
+  var snd = (check1.y == 1);
+  if (fst & snd) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
