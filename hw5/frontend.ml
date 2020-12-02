@@ -271,12 +271,26 @@ let rec cmp_exp (tc : TypeCtxt.t) (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.ope
       | _ -> failwith "broken invariant: identifier not a pointer"
     end
 
-  (* ARRAY TASK: complete this case to compilet the length(e) expression.
+  (* ARRAY TASK: complete this case to compile the length(e) expression.
        The emitted code should yield the integer stored as part 
        of the array struct representation.
   *)
-  | Ast.Length e ->
-    failwith "todo:implement Ast.Length case"
+  | Ast.Length exp ->
+    (* get ty operand and stream *)
+    let arr_ty, arr_op, arr_str = cmp_exp tc c exp in
+    let sub_ty = 
+      begin match arr_ty with
+        | Ptr (Struct [_; Array (_,arr_sub_ty)]) -> arr_sub_ty
+        | _ -> failwith  "Arr.length exp : Not an array , cant determine length" 
+      end in
+    let ptr_id = gensym "ptr" in
+    let length_id = gensym "length" in
+    let stream = lift [ ptr_id , Gep( arr_ty , arr_op , [Const 0L; Const 0L])
+      ; length_id, Load(Ptr sub_ty, Id ptr_id)] in
+    (* Ll.ty is an I64 integer as we want the length *)
+    (* Ll.operand is the length id *)
+    (* Code stream *)
+    I64, (Id length_id), arr_str >@ stream
 
   | Ast.Index (e, i) ->
     let ans_ty, ptr_op, code = cmp_exp_lhs tc c exp in
@@ -313,7 +327,35 @@ let rec cmp_exp (tc : TypeCtxt.t) (c:Ctxt.t) (exp:Ast.exp node) : Ll.ty * Ll.ope
   | Ast.NewArr (elt_ty, e1, id, e2) ->    
     let _, size_op, size_code = cmp_exp tc c e1 in
     let arr_ty, arr_op, alloc_code = oat_alloc_array tc elt_ty size_op in
-    arr_ty, arr_op, size_code >@ alloc_code
+    (*  Id 's  *)
+    let arr_id , length_id , res_id = gensym "new_arr_ptr", gensym "new_arr_len", gensym "new_arr_res" in
+    (* Add the array to the context *)
+    let ctxt = Ctxt.add c arr_id ( Ptr arr_ty , Id arr_id) in
+    (* Add the ptr to the length of the array to the ctxt *)
+    let ctxt = Ctxt.add ctxt length_id ( Ptr I64 , Id length_id) in
+    (* Allocate and store the index ptr , the id *)
+    let arr_id_stream = lift [ arr_id , Alloca arr_ty ; "" , Store (arr_ty , arr_op , Id arr_id) ] in
+    (* Allocate and store the length of the array, size_op is the length operand *)
+    let arr_length_stream = lift [ length_id , Alloca I64 ; "" , Store (I64 , size_op , Id length_id) ] in
+    let vdecl , if_state , else_state , body =
+      (* The vdecl, uses the general id of the newarr *)
+      (id, no_loc (CInt 0L)) , 
+      (* If_state *)
+      (* First is a binary operation, less than statement to iterate through arr *)
+      no_loc @@  Bop (Lt , no_loc @@ Id id , no_loc @@ Id length_id ) ,
+      (* assign value, to increment the id (works as an index), by 1 *)
+      no_loc @@ Assn ( no_loc @@ Id id, 
+                       no_loc @@ Bop (Add , no_loc @@ Id id , no_loc @@ CInt 1L)) ,
+      (* assign the e2 valuje to the index in id *)
+      no_loc @@ Assn ( no_loc @@ Index( no_loc @@ Id arr_id , no_loc @@ Id id) , e2) 
+      in
+    let for_state = no_loc @@ For( [ vdecl ] , Some if_state , Some else_state , [ body ]) in
+    (* compile the for state *)
+    let _, new_arr_stream = cmp_stmt tc ctxt Void for_state in
+    arr_ty, arr_op, 
+      size_code >@ alloc_code >@ arr_id_stream >@ arr_length_stream >@
+      new_arr_stream >@ 
+      lift [ res_id , Load( Ptr arr_ty , Id arr_id ) ]
 
    (* STRUCT TASK: complete this code that compiles struct expressions.
       For each field component of the struct
