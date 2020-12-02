@@ -214,8 +214,40 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      | _ -> type_error e ("Can only get length of an array")
                                      end
 
-  | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
-  | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented") 
+  | CStruct (struct_id, fields)   ->  let struct_fields =
+                                      begin match lookup_struct_option struct_id c with 
+                                      | None -> type_error e ("Can't find struct with name " ^ struct_id)
+                                      | Some x -> x
+                                      end in
+                                      let compare ((name1, _):(id * exp node)) ((name2, _):(id * exp node)) : int =
+                                        String.compare name1 name2
+                                      in
+                                      let fields_sorted = List.sort compare fields in
+                                      let rec aux (aux_struct : field list) (aux_fields : (id * exp node) list) : unit =
+                                      begin match (aux_struct, aux_fields) with
+                                      | ([], []) -> ()
+                                      | ((f::fs), (id,exp)::tail) -> if f.fieldName = id then () else type_error e ("Structs with different field names");
+                                                                     if f.ftyp = (typecheck_exp c exp) then () else type_error e ("Structs with different field types");
+                                                                     aux fs tail
+                                      | _ -> type_error e ("Structs with different number of fields")
+                                      end in
+                                      aux struct_fields fields;
+                                      TRef (RStruct struct_id)
+
+  | Proj    (exp, id)             ->  let fields =
+                                      begin match typecheck_exp c exp with 
+                                      | TRef (RStruct sid) ->  begin match lookup_struct_option sid c with 
+                                                              | None -> type_error e ("Projargument is a nonexistant struct id") 
+                                                              | Some x -> x
+                                                              end
+                                      | _ -> type_error e ("Proj is only defined for structs") 
+                                      end in
+                                      let rec aux (aux_struct : field list) : Ast.ty =
+                                      begin match aux_struct with 
+                                      | [] -> type_error e ("Field " ^ id ^ " cannot be found in the struct") 
+                                      | f::fs -> if f.fieldName = id then f.ftyp else aux fs
+                                      end in
+                                      aux fields
 
   | Call    (exp, exp_list)       -> let (arg_list, ret) =
                                      begin match typecheck_exp c exp with
@@ -284,18 +316,31 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
+  let rec typecheck_stmts (current : Tctxt.t) (stmts:Ast.stmt node list) : Tctxt.t * bool =
+    begin match stmts with 
+    | [] -> (current, false)
+    | [stmt] -> typecheck_stmt current stmt to_ret
+    | stmt::tail -> let (next, flag) = typecheck_stmt current stmt to_ret in
+                    if flag then type_error stmt ("Returns too early 2") else 
+                    typecheck_stmts next tail
+    end in
+  
   begin match s.elt with
-  | Assn  (exp1, exp2)                    -> type_error s ("Statementtype 'Assn' has not yet been implemented")
+  | Assn  (loc_exp, value_exp)            -> let value_type = typecheck_exp tc value_exp in 
+                                             let loc_type = typecheck_exp tc loc_exp in 
+                                             if subtype tc value_type loc_type then (tc, false) else
+                                             type_error s ("Assn types do not match")
+  
   | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
                                              let ctxt = add_local tc id exp_type in
-                                             (ctxt, true)
+                                             (ctxt, false)
 
   | Ret    exp_opt                        -> begin match (exp_opt, to_ret) with 
                                              | (None, RetVoid)        -> (tc, true)
                                              | (Some _, RetVoid)      -> type_error s ("Returned something instead of void")
                                              | (None, RetVal _)       -> type_error s ("Returned nothing but expected something")
                                              | (Some exp, RetVal ty)  -> let exp_type = typecheck_exp tc exp in 
-                                                                         if exp_type = ty then (tc, true) else type_error s ("Returned wrong type")
+                                                                         if subtype tc exp_type ty then (tc, true) else type_error s ("Returned wrong type")
                                              end
 
   | SCall (exp, exp_list)                 ->  let (arg_list, ret) =
@@ -312,18 +357,46 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                               end in
                                               check_args exp_list arg_list;
                                               begin match ret with
-                                              | RetVoid -> (tc, true)
+                                              | RetVoid -> (tc, false)
                                               | _ -> type_error s ("Function returns something") 
                                               end
 
   | If    (cond, then_stmts, else_stmts)  -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
-                                             type_error s ("Statementtype 'If' has not yet been implemented")
+                                             let (ctxt1, flag1) = typecheck_stmts tc then_stmts in
+                                             let (ctxt2, flag2) = typecheck_stmts tc else_stmts in
+                                             (tc, (flag1 && flag2))
                                              
                                              
   
   | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
-  | For   (vdecls, exp, stmt, stmts)      -> type_error s ("Statementtype 'For' has not yet been implemented")
-  | While (cond, stmt)                    -> type_error s ("Statementtype 'While' has not yet been implemented")
+
+  | For   (vdecls,cond_opt,stmt_opt,stmts)-> let rec aux (decls: vdecl list) (current: Tctxt.t) : Tctxt.t =
+                                             begin match decls with 
+                                             | [] -> current 
+                                             | (id, exp)::tail -> let exp_type = typecheck_exp current exp in 
+                                                                  let next = add_local current id exp_type in
+                                                                  aux tail next
+                                             end in
+                                             let ctxt = aux vdecls tc in
+                                             begin match cond_opt with 
+                                             | None -> ()
+                                             | Some cond -> if (typecheck_exp ctxt cond) = TBool then () else type_error s ("condition in if needs to be bool");
+                                             end;
+                                             begin match cond_opt with 
+                                             | None -> ()
+                                             | Some cond -> if (typecheck_exp ctxt cond) = TBool then () else type_error s ("condition in if needs to be bool");
+                                             end;
+                                             begin match stmt_opt with 
+                                             | None -> (tc, false)
+                                             | Some stmt -> typecheck_stmt ctxt stmt to_ret
+                                             end;
+                                             let (ctxt, flag) = typecheck_stmts ctxt stmts in
+                                             (tc, false)
+
+  | While (cond, stmts)                   -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
+                                             let (ctxt, flag) = typecheck_stmts tc stmts in
+                                             (tc, false)
+
   end
 
 (* struct type declarations ------------------------------------------------- *)
@@ -359,8 +432,10 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
   let rec aux (current: Tctxt.t) (statements: block) : unit = 
     begin match statements with 
     | [] -> ()
+    | [l] ->  let (next, flag) = typecheck_stmt current l f.frtyp in
+              if flag then () else type_error l ("Didn't return") 
     | l::ls ->  let (next, flag) = typecheck_stmt current l f.frtyp in
-                aux next ls
+                if flag then type_error l ("Returns too early") else aux next ls
     end in
   aux initial f.body
 
@@ -394,18 +469,24 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
 let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
   let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
     begin match decl with 
-    | Gtdecl node -> add_struct current (fst node.elt) (snd node.elt)
+    | Gtdecl node -> begin match lookup_struct_option (fst node.elt) current with 
+                     | None -> add_struct current (fst node.elt) (snd node.elt)
+                     | Some _ -> type_error node ("Struct has already been declared")
+                     end
     | _ -> current
     end in
   List.fold_left aux empty p
 
 let add_built_in_functions (t0:Tctxt.t) : Tctxt.t =
-  let t1 = add_global t0 "print_string"     (TRef (RFun ([TRef RString]       , RetVoid)))                      in
-  let t2 = add_global t1 "print_int"        (TRef (RFun ([TInt]               , RetVoid)))                      in
-  let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]              , RetVoid)))                      in
-  let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)] , RetVal (TRef RString))))        in
-  let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]       , RetVal (TRef (RArray TInt)))))  in
-  t5
+  let t1 = add_global t0 "print_string"     (TRef (RFun ([TRef RString]               , RetVoid)))                      in
+  let t2 = add_global t1 "print_int"        (TRef (RFun ([TInt]                       , RetVoid)))                      in
+  let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]                      , RetVoid)))                      in
+  let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)]         , RetVal (TRef RString))))        in
+  let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]               , RetVal (TRef (RArray TInt)))))  in
+  let t6 = add_global t5 "string_of_int"    (TRef (RFun ([TInt]                       , RetVal (TRef RString))))        in
+  let t7 = add_global t6 "string_cat"       (TRef (RFun ([TRef RString;TRef RString]  , RetVal (TRef RString))))        in
+  let t8 = add_global t7 "length_of_string" (TRef (RFun ([TRef RString]               , RetVal (TInt))))                in
+  t8
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
   let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
@@ -413,7 +494,11 @@ let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
     | Gfdecl node ->  let f = node.elt in
                       let ty = TRef (RFun ((List.map fst f.args), f.frtyp)) in
                       let id = f.fname in
-                      add_global current id ty
+                      begin match lookup_global_option id current with 
+                      | None -> add_global current id ty
+                      | Some _ -> type_error node (id ^ " has already been declared func")
+                      end
+                      
     | _ -> current
     end in
   List.fold_left aux (add_built_in_functions tc) p
@@ -424,7 +509,10 @@ let create_global_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
     | Gvdecl node ->  let id = node.elt.name in
                       let exp = node.elt.init in
                       let ty = typecheck_exp current exp in
-                      add_global current id ty
+                      begin match lookup_global_option id current with 
+                      | None -> add_global current id ty
+                      | Some _ -> type_error node (id ^ " has already been declared gobal")
+                      end
     | _ -> current
     end in
   List.fold_left aux tc p
