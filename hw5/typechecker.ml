@@ -318,20 +318,22 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
   let rec typecheck_stmts (current : Tctxt.t) (stmts:Ast.stmt node list) : Tctxt.t * bool =
     begin match stmts with 
-    | [] -> (current, true)
+    | [] -> (current, false)
+    | [stmt] -> typecheck_stmt current stmt to_ret
     | stmt::tail -> let (next, flag) = typecheck_stmt current stmt to_ret in
+                    if flag then type_error stmt ("Returns too early 2") else 
                     typecheck_stmts next tail
     end in
   
   begin match s.elt with
   | Assn  (loc_exp, value_exp)            -> let value_type = typecheck_exp tc value_exp in 
                                              let loc_type = typecheck_exp tc loc_exp in 
-                                             if subtype tc value_type loc_type then (tc, true) else
+                                             if subtype tc value_type loc_type then (tc, false) else
                                              type_error s ("Statementtype 'Assn' has not yet been implemented")
   
   | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
                                              let ctxt = add_local tc id exp_type in
-                                             (ctxt, true)
+                                             (ctxt, false)
 
   | Ret    exp_opt                        -> begin match (exp_opt, to_ret) with 
                                              | (None, RetVoid)        -> (tc, true)
@@ -355,7 +357,7 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                               end in
                                               check_args exp_list arg_list;
                                               begin match ret with
-                                              | RetVoid -> (tc, true)
+                                              | RetVoid -> (tc, false)
                                               | _ -> type_error s ("Function returns something") 
                                               end
 
@@ -385,7 +387,7 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                              | Some cond -> if (typecheck_exp ctxt cond) = TBool then () else type_error s ("condition in if needs to be bool");
                                              end;
                                              begin match stmt_opt with 
-                                             | None -> (tc, true)
+                                             | None -> (tc, false)
                                              | Some stmt -> typecheck_stmt ctxt stmt to_ret
                                              end;
                                              let (ctxt, flag) = typecheck_stmts ctxt stmts in
@@ -430,8 +432,10 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
   let rec aux (current: Tctxt.t) (statements: block) : unit = 
     begin match statements with 
     | [] -> ()
+    | [l] ->  let (next, flag) = typecheck_stmt current l f.frtyp in
+              if flag then () else type_error l ("Didn't return") 
     | l::ls ->  let (next, flag) = typecheck_stmt current l f.frtyp in
-                aux next ls
+                if flag then type_error l ("Returns too early") else aux next ls
     end in
   aux initial f.body
 
