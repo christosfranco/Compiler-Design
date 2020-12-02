@@ -234,7 +234,20 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                       aux struct_fields fields;
                                       TRef (RStruct struct_id)
 
-  | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented") 
+  | Proj    (exp, id)             ->  let fields =
+                                      begin match typecheck_exp c exp with 
+                                      | TRef (RStruct sid) ->  begin match lookup_struct_option sid c with 
+                                                              | None -> type_error e ("Projargument is a nonexistant struct id") 
+                                                              | Some x -> x
+                                                              end
+                                      | _ -> type_error e ("Proj is only defined for structs") 
+                                      end in
+                                      let rec aux (aux_struct : field list) : Ast.ty =
+                                      begin match aux_struct with 
+                                      | [] -> type_error e ("Field " ^ id ^ " cannot be found in the struct") 
+                                      | f::fs -> if f.fieldName = id then f.ftyp else aux fs
+                                      end in
+                                      aux fields
 
   | Call    (exp, exp_list)       -> let (arg_list, ret) =
                                      begin match typecheck_exp c exp with
