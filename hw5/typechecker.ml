@@ -284,6 +284,13 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
      block typecheck rules.
 *)
 let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.t * bool =
+  let rec typecheck_stmts (current : Tctxt.t) (stmts:Ast.stmt node list) : Tctxt.t * bool =
+    begin match stmts with 
+    | [] -> (current, true)
+    | stmt::tail -> let (next, flag) = typecheck_stmt current stmt to_ret in
+                    typecheck_stmts next tail
+    end in
+  
   begin match s.elt with
   | Assn  (exp1, exp2)                    -> type_error s ("Statementtype 'Assn' has not yet been implemented")
   | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
@@ -317,7 +324,9 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                               end
 
   | If    (cond, then_stmts, else_stmts)  -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
-                                             type_error s ("Statementtype 'If' has not yet been implemented")
+                                             let (ctxt1, flag1) = typecheck_stmts tc then_stmts in
+                                             let (ctxt2, flag2) = typecheck_stmts tc else_stmts in
+                                             (tc, (flag1 && flag2))
                                              
                                              
   
