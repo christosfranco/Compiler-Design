@@ -427,7 +427,11 @@ and cmp_exp_lhs (tc : TypeCtxt.t) (c:Ctxt.t) (e:exp node) : Ll.ty * Ll.operand *
   *)
   | Ast.Proj (e, i) ->
     let struct_ty, struct_op, struct_code = cmp_exp tc c e in
-    let field_ty, field_index = TypeCtxt.lookup_field_name i i tc in
+    let struct_id = match struct_ty with
+       | Ptr (Namedt id) -> id
+       | _ -> failwith "Projecting on a non struct type, has to be Ptr Namedt id"
+     in
+    let field_ty, field_index = TypeCtxt.lookup_field_name struct_id i tc in
     let ret_ty = cmp_ty tc field_ty in
     let ptr_id = gensym "field_index_id" in
     let proj_code = 
