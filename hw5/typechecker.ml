@@ -292,7 +292,11 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
     end in
   
   begin match s.elt with
-  | Assn  (exp1, exp2)                    -> type_error s ("Statementtype 'Assn' has not yet been implemented")
+  | Assn  (loc_exp, value_exp)            -> let value_type = typecheck_exp tc value_exp in 
+                                             let loc_type = typecheck_exp tc loc_exp in 
+                                             if subtype tc value_type loc_type then (tc, true) else
+                                             type_error s ("Statementtype 'Assn' has not yet been implemented")
+  
   | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
                                              let ctxt = add_local tc id exp_type in
                                              (ctxt, true)
