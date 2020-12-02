@@ -335,8 +335,34 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
                                              
   
   | Cast  (rty, id, exp, stmts1, stmts2)  -> type_error s ("Statementtype 'Cast' has not yet been implemented")
-  | For   (vdecls, exp, stmt, stmts)      -> type_error s ("Statementtype 'For' has not yet been implemented")
-  | While (cond, stmt)                    -> type_error s ("Statementtype 'While' has not yet been implemented")
+
+  | For   (vdecls,cond_opt,stmt_opt,stmts)-> let rec aux (decls: vdecl list) (current: Tctxt.t) : Tctxt.t =
+                                             begin match decls with 
+                                             | [] -> current 
+                                             | (id, exp)::tail -> let exp_type = typecheck_exp current exp in 
+                                                                  let next = add_local current id exp_type in
+                                                                  aux tail next
+                                             end in
+                                             let ctxt = aux vdecls tc in
+                                             begin match cond_opt with 
+                                             | None -> ()
+                                             | Some cond -> if (typecheck_exp ctxt cond) = TBool then () else type_error s ("condition in if needs to be bool");
+                                             end;
+                                             begin match cond_opt with 
+                                             | None -> ()
+                                             | Some cond -> if (typecheck_exp ctxt cond) = TBool then () else type_error s ("condition in if needs to be bool");
+                                             end;
+                                             begin match stmt_opt with 
+                                             | None -> (tc, true)
+                                             | Some stmt -> typecheck_stmt ctxt stmt to_ret
+                                             end;
+                                             let (ctxt, flag) = typecheck_stmts ctxt stmts in
+                                             (tc, false)
+
+  | While (cond, stmts)                   -> if (typecheck_exp tc cond) = TBool then () else type_error s ("condition in if needs to be bool"); 
+                                             let (ctxt, flag) = typecheck_stmts tc stmts in
+                                             (tc, false)
+
   end
 
 (* struct type declarations ------------------------------------------------- *)
@@ -418,7 +444,8 @@ let add_built_in_functions (t0:Tctxt.t) : Tctxt.t =
   let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]              , RetVoid)))                      in
   let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)] , RetVal (TRef RString))))        in
   let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]       , RetVal (TRef (RArray TInt)))))  in
-  t5
+  let t6 = add_global t5 "string_of_int"    (TRef (RFun ([TInt]               , RetVal (TRef RString))))        in
+  t6
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
   let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
