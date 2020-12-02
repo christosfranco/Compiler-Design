@@ -471,13 +471,15 @@ let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
   List.fold_left aux empty p
 
 let add_built_in_functions (t0:Tctxt.t) : Tctxt.t =
-  let t1 = add_global t0 "print_string"     (TRef (RFun ([TRef RString]       , RetVoid)))                      in
-  let t2 = add_global t1 "print_int"        (TRef (RFun ([TInt]               , RetVoid)))                      in
-  let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]              , RetVoid)))                      in
-  let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)] , RetVal (TRef RString))))        in
-  let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]       , RetVal (TRef (RArray TInt)))))  in
-  let t6 = add_global t5 "string_of_int"    (TRef (RFun ([TInt]               , RetVal (TRef RString))))        in
-  t6
+  let t1 = add_global t0 "print_string"     (TRef (RFun ([TRef RString]               , RetVoid)))                      in
+  let t2 = add_global t1 "print_int"        (TRef (RFun ([TInt]                       , RetVoid)))                      in
+  let t3 = add_global t2 "print_bool"       (TRef (RFun ([TBool]                      , RetVoid)))                      in
+  let t4 = add_global t3 "string_of_array"  (TRef (RFun ([TRef (RArray TInt)]         , RetVal (TRef RString))))        in
+  let t5 = add_global t4 "array_of_string"  (TRef (RFun ([TRef RString]               , RetVal (TRef (RArray TInt)))))  in
+  let t6 = add_global t5 "string_of_int"    (TRef (RFun ([TInt]                       , RetVal (TRef RString))))        in
+  let t7 = add_global t6 "string_cat"       (TRef (RFun ([TRef RString;TRef RString]  , RetVal (TRef RString))))        in
+  let t8 = add_global t7 "length_of_string" (TRef (RFun ([TRef RString]               , RetVal (TInt))))                in
+  t8
 
 let create_function_ctxt (tc:Tctxt.t) (p:Ast.prog) : Tctxt.t =
   let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
