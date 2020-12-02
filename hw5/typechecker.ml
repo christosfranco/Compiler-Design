@@ -214,7 +214,26 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                      | _ -> type_error e ("Can only get length of an array")
                                      end
 
-  | CStruct (struct_id, fields)   -> type_error e ("Expressiontype 'CStruct' has not yet been implemented")    
+  | CStruct (struct_id, fields)   ->  let struct_fields =
+                                      begin match lookup_struct_option struct_id c with 
+                                      | None -> type_error e ("Can't find struct with name " ^ struct_id)
+                                      | Some x -> x
+                                      end in
+                                      let compare ((name1, _):(id * exp node)) ((name2, _):(id * exp node)) : int =
+                                        String.compare name1 name2
+                                      in
+                                      let fields_sorted = List.sort compare fields in
+                                      let rec aux (aux_struct : field list) (aux_fields : (id * exp node) list) : unit =
+                                      begin match (aux_struct, aux_fields) with
+                                      | ([], []) -> ()
+                                      | ((f::fs), (id,exp)::tail) -> if f.fieldName = id then () else type_error e ("Structs with different field names");
+                                                                     if f.ftyp = (typecheck_exp c exp) then () else type_error e ("Structs with different field types");
+                                                                     aux fs tail
+                                      | _ -> type_error e ("Structs with different number of fields")
+                                      end in
+                                      aux struct_fields fields;
+                                      TRef (RStruct struct_id)
+
   | Proj    (exp, id)             -> type_error e ("Expressiontype 'Proj' has not yet been implemented") 
 
   | Call    (exp, exp_list)       -> let (arg_list, ret) =
