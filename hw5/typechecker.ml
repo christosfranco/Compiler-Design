@@ -333,7 +333,10 @@ let rec typecheck_stmt (tc : Tctxt.t) (s:Ast.stmt node) (to_ret:ret_ty) : Tctxt.
   
   | Decl  (id, exp)                       -> let exp_type = typecheck_exp tc exp in 
                                              let ctxt = add_local tc id exp_type in
-                                             (ctxt, false)
+                                             begin match lookup_local_option id tc with 
+                                             | None -> (ctxt, false)
+                                             | Some _ -> type_error s ("Local id " ^ id ^ " already defined")
+                                             end
 
   | Ret    exp_opt                        -> begin match (exp_opt, to_ret) with 
                                              | (None, RetVoid)        -> (tc, true)
