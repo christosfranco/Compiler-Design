@@ -231,7 +231,7 @@ let rec typecheck_exp (c : Tctxt.t) (e : Ast.exp node) : Ast.ty =
                                                                      aux fs tail
                                       | _ -> type_error e ("Structs with different number of fields")
                                       end in
-                                      aux struct_fields fields;
+                                      aux struct_fields fields_sorted;
                                       TRef (RStruct struct_id)
 
   | Proj    (exp, id)             ->  let fields =
@@ -482,7 +482,11 @@ let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
   let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
     begin match decl with 
     | Gtdecl node -> begin match lookup_struct_option (fst node.elt) current with 
-                     | None -> add_struct current (fst node.elt) (snd node.elt)
+                     | None -> let compare ((f1):(field)) ((f2):(field)) : int =
+                               String.compare f1.fieldName f2.fieldName
+                               in
+                               let fields_sorted = List.sort compare (snd node.elt) in
+                               add_struct current (fst node.elt) fields_sorted
                      | Some _ -> type_error node ("Struct has already been declared")
                      end
     | _ -> current
