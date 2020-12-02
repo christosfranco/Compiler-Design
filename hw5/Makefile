@@ -1,6 +1,6 @@
 INCLUDES= util,x86,grading,ll
 LIBS = unix,str,nums
-SUBMIT := frontend.ml typechecker.ml studenttests.ml hw5programs/check_struct.oat
+SUBMIT := frontend.ml typechecker.ml studenttests.ml hw5programs/check_struct.oat team.txt
 
 HWNAME := hw05
 TIMESTAMP := $(shell /bin/date "+%Y-%m-%d-%H:%M:%S")
