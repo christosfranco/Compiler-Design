@@ -469,7 +469,10 @@ let typecheck_fdecl (tc : Tctxt.t) (f : Ast.fdecl) (l : 'a Ast.node) : unit =
 let create_struct_ctxt (p:Ast.prog) : Tctxt.t =
   let aux (current: Tctxt.t) (decl: Ast.decl) : Tctxt.t =
     begin match decl with 
-    | Gtdecl node -> add_struct current (fst node.elt) (snd node.elt)
+    | Gtdecl node -> begin match lookup_struct_option (fst node.elt) current with 
+                     | None -> add_struct current (fst node.elt) (snd node.elt)
+                     | Some _ -> type_error node ("Struct has already been declared")
+                     end
     | _ -> current
     end in
   List.fold_left aux empty p
