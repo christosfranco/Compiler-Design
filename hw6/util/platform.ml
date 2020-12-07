@@ -48,7 +48,7 @@ let configure_os () =
     begin
       linux := true;
       target_triple := linux_target_triple;
-      platform_flags := ""
+      platform_flags := "-mstackrealign -Wno-unused-command-line-argument"
     end
   else
   if os = "Darwin" then
