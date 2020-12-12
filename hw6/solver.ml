@@ -86,57 +86,37 @@ module type FACT =
 *)
 module Make (Fact : FACT) (Graph : DFA_GRAPH with type fact := Fact.t) =
   struct
-
- 
-    (* let rec solver workset g = 
-      begin match Graph.NodeS.is_empty workset with 
-      | true -> g
-      | false -> 
-        let elt = Graph.NodeS.choose workset in 
-        let pre = Graph.NodeS.elements (Graph.preds g elt) in 
-        let pre_facts = List.map (fun p -> Graph.out g p) pre in 
-        let cmb = Fact.combine pre_facts in 
-        let flow_out = Graph.flow g elt cmb in 
-        let new_workset = Graph.NodeS.remove elt workset in 
-        if (Fact.compare flow_out (Graph.out g elt)) <> 0 then 
-          let succ = Graph.succs g elt in 
-          let new_new_workset = Graph.NodeS.union new_workset succ in 
-          let g' = Graph.add_fact elt flow_out g in 
-          solver new_new_workset g'
-        else 
-          solver new_workset g
-      end *)
-
     let solve (g:Graph.t) : Graph.t =
       let nodes = Graph.nodes g in 
       let rec solvefun nodes g = (
-      if (Graph.NodeS.is_empty nodes = false) then
-        (* Choose a node from the worklist *)
-        let node = Graph.NodeS.choose nodes in
-        (* Find the node's predecessors  *)
-        let pred = Graph.NodeS.elements (Graph.preds g node) in
-        (* flow facts *)
-        let flow_facts = List.map (fun x -> Graph.out g x) pred in
-        (* combine predessesors' flow facts *)
-        let comb = Fact.combine flow_facts in
-        (* Apply flow to comb to find new output *)
-        let flow_output = Graph.flow g node comb in 
-        (* Compare flow_output , if it is 0 they are the same  *)
-        if (Fact.compare flow_output (Graph.out g node)) <> 0 then
-          (* Succesor to node*)
-          let succesor = Graph.succs g node in
-          (* Remove node *)
-          let remove_from_worklist = Graph.NodeS.remove node nodes in
-          (* add succesor *)
-          let new_worklist = Graph.NodeS.union remove_from_worklist succesor in
-          (* update graph *)
-          let new_g = Graph.add_fact node flow_output g in
-          solvefun new_worklist new_g
-        else
-          let remove_from_worklist = Graph.NodeS.remove node nodes in 
-          solvefun remove_from_worklist g
-      else 
-        g
-        ) in solvefun nodes g
+        if not @@ Graph.NodeS.is_empty nodes then
+          (* Choose a node from the worklist *)
+          let node = Graph.NodeS.choose nodes in
+          (* Find the node's predecessors  *)
+          let pred = Graph.NodeS.elements (Graph.preds g node) in
+          (* flow facts *)
+          let flow_facts = List.map (fun x -> Graph.out g x) pred in
+          (* combine predessesors' flow facts *)
+          let comb = Fact.combine flow_facts in
+          (* Apply flow to comb to find new output *)
+          let flow_output = Graph.flow g node comb in 
+          (* Compare flow_output , if it is 0 they are the same  *)
+          if (Fact.compare flow_output (Graph.out g node)) <> 0 then
+            (* Succesor to node*)
+            let succesor = Graph.succs g node in
+            (* Remove node *)
+            let remove_from_worklist = Graph.NodeS.remove node nodes in
+            (* add succesor *)
+            let new_worklist = Graph.NodeS.union remove_from_worklist succesor in
+            (* update graph *)
+            let new_g = Graph.add_fact node flow_output g in
+            solvefun new_worklist new_g
+          else
+            let remove_from_worklist = Graph.NodeS.remove node nodes in 
+            solvefun remove_from_worklist g
+        else 
+          g
+      )
+      in solvefun nodes g
   end
 
