@@ -88,34 +88,34 @@ module Make (Fact : FACT) (Graph : DFA_GRAPH with type fact := Fact.t) =
   struct
     let solve (g:Graph.t) : Graph.t =
       let nodes = Graph.nodes g in 
-      let rec solvefun nodes g = (
-        if not @@ Graph.NodeS.is_empty nodes then
+      let rec solvefun worklist graph = (
+        if not @@ Graph.NodeS.is_empty worklist then
           (* Choose a node from the worklist *)
-          let node = Graph.NodeS.choose nodes in
+          let node = Graph.NodeS.choose worklist in
           (* Find the node's predecessors  *)
-          let pred = Graph.NodeS.elements (Graph.preds g node) in
+          let pred = Graph.NodeS.elements (Graph.preds graph node) in
           (* flow facts *)
-          let flow_facts = List.map (fun x -> Graph.out g x) pred in
+          let flow_facts = List.map (fun x -> Graph.out graph x) pred in
           (* combine predessesors' flow facts *)
           let comb = Fact.combine flow_facts in
           (* Apply flow to comb to find new output *)
-          let flow_output = Graph.flow g node comb in 
+          let flow_output = Graph.flow graph node comb in 
           (* Compare flow_output , if it is 0 they are the same  *)
-          if (Fact.compare flow_output (Graph.out g node)) <> 0 then
+          if (Fact.compare flow_output (Graph.out graph node)) <> 0 then
             (* Succesor to node*)
-            let succesor = Graph.succs g node in
+            let succesor = Graph.succs graph node in
             (* Remove node *)
-            let remove_from_worklist = Graph.NodeS.remove node nodes in
+            let remove_from_worklist = Graph.NodeS.remove node worklist in
             (* add succesor *)
             let new_worklist = Graph.NodeS.union remove_from_worklist succesor in
             (* update graph *)
-            let new_g = Graph.add_fact node flow_output g in
-            solvefun new_worklist new_g
+            let new_graph = Graph.add_fact node flow_output graph in
+            solvefun new_worklist new_graph
           else
-            let remove_from_worklist = Graph.NodeS.remove node nodes in 
-            solvefun remove_from_worklist g
+            let remove_from_worklist = Graph.NodeS.remove node worklist in 
+            solvefun remove_from_worklist graph
         else 
-          g
+          graph
       )
       in solvefun nodes g
   end
