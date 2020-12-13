@@ -17,6 +17,11 @@ module SymPtr =
       | Unique -> "Unique"
       | UndefAlias -> "UndefAlias"
 
+    (* helper function for join two SymPtr.t facts. *)
+    let join fact1 fact2 = match fact1, fact2 with
+      | MayAlias , _ | _ , MayAlias -> MayAlias
+      | Unique , Unique -> Unique
+      | UndefAlias , x | x , UndefAlias -> x
   end
 
 (* The analysis computes, at each program point, which UIDs in scope are a unique name
@@ -34,7 +39,12 @@ type fact = SymPtr.t UidM.t
 
  *)
 let insn_flow ((u,i):uid * insn) (d:fact) : fact =
-  failwith "Alias.insn_flow unimplemented"
+  begin match i with
+  (*  After an alloca, the defined UID is the unique name for a stack slot *)
+  | Alloca _ -> UidM.add u SymPtr.Unique d
+  (*  *)
+  | _ -> d
+  end
 
 
 (* The flow function across terminators is trivial: they never change alias info *)
@@ -60,6 +70,8 @@ module Fact =
     let to_string : fact -> string =
       UidM.to_string (fun _ v -> SymPtr.to_string v)
 
+
+  
     (* TASK: complete the "combine" operation for alias analysis.
 
        The alias analysis should take the join over predecessors to compute the
@@ -68,8 +80,17 @@ module Fact =
        It may be useful to define a helper function that knows how to take the
        join of two SymPtr.t facts.
     *)
+    (* helper function see SymPtr.join *)
     let combine (ds:fact list) : fact =
-      failwith "Alias.Fact.combine not implemented"
+      let combine_element make_map fact_list =
+        (* remove duplicates with merge, and put all elements into one list *)
+        UidM.merge
+        (* If there is a predecessor or is first element ; join them   *)
+        (fun join map fact -> begin match map , fact with
+        | Some map , Some fact -> Some (SymPtr.join map fact)
+        | y , None | None , y -> y
+        end) make_map fact_list in
+      List.fold_left combine_element UidM.empty ds
   end
 
 (* instantiate the general framework ---------------------------------------- *)
