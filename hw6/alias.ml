@@ -42,7 +42,30 @@ let insn_flow ((u,i):uid * insn) (d:fact) : fact =
   begin match i with
   (*  After an alloca, the defined UID is the unique name for a stack slot *)
   | Alloca _ -> UidM.add u SymPtr.Unique d
-  (*  *)
+  (* - A pointer returned by a load, call, bitcast, or GEP may be aliased *)
+  | Load ( Ptr ( Ptr _ ) , _ ) -> UidM.add u SymPtr.MayAlias d
+  (* A pointer passed as an argument to a call, bitcast, GEP, or store
+    may be aliased *)
+  | Store (Ptr _ , Id v , _ ) -> UidM.add v SymPtr.MayAlias d
+  | Call ( ty , _ , args ) -> 
+    let new_fact = 
+      begin match ty with  
+      | Ptr _ -> UidM.add u SymPtr.MayAlias d
+      | _ -> d
+    end in
+    List.fold_left 
+      (fun fact (ty, op) ->  
+        begin match ty, op with
+          | Ptr _ , Id v -> UidM.add v SymPtr.MayAlias d
+          | _ -> d
+        end
+      ) new_fact args
+  
+  | Bitcast ( _ , Id v , _ ) | Gep ( _ , Id v , _ ) -> 
+                d |> UidM.add v SymPtr.MayAlias
+                  |> UidM.add u SymPtr.MayAlias
+  | Bitcast _ | Gep ( _ , _ , _ ) -> d |> UidM.add u SymPtr.MayAlias
+  (*    - Other instructions do not define pointers *)
   | _ -> d
   end
 
