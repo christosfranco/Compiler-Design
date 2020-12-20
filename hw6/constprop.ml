@@ -86,7 +86,8 @@ let insn_flow (u,i:uid * insn) (d:fact) : fact =
                                 | UndefConst, _ | _, UndefConst -> UidM.add u SymConst.UndefConst d
                                 | _ -> UidM.add u SymConst.NonConst d
                                 end
-  | Store (_, _, Id id) | Store (_, _, Gid id) -> UidM.add id (SymConst.UndefConst) d
+  | Store (_, _, Id id) | Store (_, _, Gid id) -> UidM.add u (SymConst.UndefConst) d
+  | Call (Void, _, _) -> UidM.add u (SymConst.UndefConst) d
   | _ -> UidM.add u (SymConst.NonConst) d
   end
 
