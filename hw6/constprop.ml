@@ -63,10 +63,29 @@ let solve_icmp (cnd: cnd) (x:int64) (y:int64) : int64 =
   end in
   if cmp then 1L else 0L
 
+let solve_op (op:operand) (d:fact) : SymConst.t =
+  begin match op with
+  | Null -> SymConst.UndefConst
+  | Const x -> SymConst.Const x
+  | Id id | Gid id -> begin match UidM.find_opt id d with 
+                      | None -> SymConst.UndefConst
+                      | Some x -> x
+                      end
+  end
+
+
 let insn_flow (u,i:uid * insn) (d:fact) : fact =
   begin match i with
-  | Binop (op, _, Const x, Const y) -> UidM.add u (SymConst.Const (solve_binop op x y)) d
-  | Icmp  (op, _, Const x, Const y) -> UidM.add u (SymConst.Const (solve_icmp  op x y)) d
+  | Binop (op, _, op1, op2) ->  begin match solve_op op1 d, solve_op op2 d with 
+                                | Const x, Const y -> UidM.add u (SymConst.Const (solve_binop op x y)) d
+                                | UndefConst, _ | _, UndefConst -> UidM.add u SymConst.UndefConst d
+                                | _ -> UidM.add u SymConst.NonConst d
+                                end
+  | Icmp (op, _, op1, op2) ->  begin match solve_op op1 d, solve_op op2 d with 
+                                | Const x, Const y -> UidM.add u (SymConst.Const (solve_icmp op x y)) d
+                                | UndefConst, _ | _, UndefConst -> UidM.add u SymConst.UndefConst d
+                                | _ -> UidM.add u SymConst.NonConst d
+                                end
   | Store (_, _, Id id) | Store (_, _, Gid id) -> UidM.add id (SymConst.UndefConst) d
   | _ -> UidM.add u (SymConst.NonConst) d
   end
