@@ -22,6 +22,9 @@ module SymConst =
 
     (* helper function for join two SymPtr.t facts. *)
     let join fact1 fact2 = match fact1, fact2 with
+      | UndefConst, Const x -> Const x
+      | Const x, UndefConst -> Const x
+      | Const x, Const y -> NonConst
       | NonConst , _ | _ , NonConst -> NonConst
       | _ -> UndefConst
   end
@@ -157,7 +160,7 @@ let run (cg:Graph.t) (cfg:Cfg.t) : Cfg.t =
   let cp_block (l:Ll.lbl) (cfg:Cfg.t) : Cfg.t =
     let b = Cfg.block cfg l in
     let cb = Graph.uid_out cg l in
-    let aux ((id,ins) :(uid * insn)) : (uid * insn) =
+    let aux_instr ((id,ins) :(uid * insn)) : (uid * insn) =
       let temp = cb id in
       let auxx (op: operand) : operand =
         begin match op with 
@@ -169,10 +172,30 @@ let run (cg:Graph.t) (cfg:Cfg.t) : Cfg.t =
         end in
       begin match ins with 
       | Binop (bop, ty, op1, op2) -> (id, Binop (bop, ty, auxx op1, auxx op2))
+      | Icmp (cnd, ty, op1, op2) -> (id, Icmp (cnd, ty, auxx op1, auxx op2))
+      | Load (ty, op) -> (id, Load (ty, auxx op))
+      | Store (ty, op1, op2) -> (id, Store (ty, auxx op1, auxx op2))
+      | Call (ty, op, op_list) -> (id, Call(ty, auxx op, List.map (fun (x,y) -> (x, auxx y)) op_list))
+      | Bitcast (ty1, op, ty2) -> (id, Bitcast (ty1, auxx op, ty2))
       | _ -> (id, ins)
       end
     in
-    let block = {insns = List.map aux b.insns; term = b.term} in
+    let aux_term ((id,term) :(uid * terminator)) : (uid * terminator) =
+      let temp = cb id in
+      let auxx (op: operand) : operand =
+        begin match op with 
+        | Gid id | Id id -> begin match UidM.find id temp with
+                            | Const x -> Const x
+                            | _ -> op
+                            end
+        | _ -> op
+        end in
+      begin match term with 
+      | Ret (ty, (Some op)) -> (id, Ret (ty, (Some (auxx op))))
+      | _ -> (id, term)
+      end
+    in
+    let block = {insns = List.map aux_instr b.insns; term = aux_term b.term} in
     {cfg with blocks=LblM.add l block (LblM.remove l cfg.blocks)}
   in
 
