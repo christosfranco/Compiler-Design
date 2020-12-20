@@ -25,7 +25,6 @@ module SymConst =
       | Const x, Const y -> if x = y then Const x else NonConst
       | UndefConst, Const x -> Const x
       | Const x, UndefConst -> Const x
-      | Const x, Const y -> NonConst
       | NonConst , _ | _ , NonConst -> NonConst
       | _ -> UndefConst
   end
