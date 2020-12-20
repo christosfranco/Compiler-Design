@@ -22,6 +22,7 @@ module SymConst =
 
     (* helper function for join two SymPtr.t facts. *)
     let join fact1 fact2 = match fact1, fact2 with
+      | Const x, Const y -> if x = y then Const x else NonConst
       | UndefConst, Const x -> Const x
       | Const x, UndefConst -> Const x
       | Const x, Const y -> NonConst
