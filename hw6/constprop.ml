@@ -193,6 +193,7 @@ let run (cg:Graph.t) (cfg:Cfg.t) : Cfg.t =
         end in
       begin match term with 
       | Ret (ty, (Some op)) -> (id, Ret (ty, (Some (auxx op))))
+      | Cbr (op, l1, l2) -> (id, Cbr (auxx op,l1,l2))
       | _ -> (id, term)
       end
     in
