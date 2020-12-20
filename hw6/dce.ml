@@ -20,11 +20,19 @@ open Datastructures
      Other instructions are dead if the value they compute is not live.
 
    Hint: Consider using List.filter
+   print_endline
  *)
-let dce_block (lb:uid -> Liveness.Fact.t) 
-              (ab:uid -> Alias.fact)
-              (b:Ll.block) : Ll.block =
-  failwith "Dce.dce_block unimplemented"
+let dce_block (lb:uid -> Liveness.Fact.t) (ab:uid -> Alias.fact) (b:Ll.block) : Ll.block =
+  let dce_ins ((id,ins):(uid * insn)) : bool =
+    let live_out = lb id in
+    let alias = ab id in
+    begin match ins with 
+    | Call _ -> true 
+    | Store (_, _, Id x) | Store (_, _, Gid x) -> UidS.mem x live_out && UidM.mem x alias
+    | _ -> UidS.mem id live_out
+    end
+  in
+  {insns = List.filter dce_ins b.insns; term = b.term}
 
 let run (lg:Liveness.Graph.t) (ag:Alias.Graph.t) (cfg:Cfg.t) : Cfg.t =
 
