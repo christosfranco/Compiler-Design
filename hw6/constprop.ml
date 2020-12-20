@@ -20,7 +20,10 @@ module SymConst =
       | Const i -> Printf.sprintf "Const (%LdL)" i
       | UndefConst -> "UndefConst"
 
-    
+    (* helper function for join two SymPtr.t facts. *)
+    let join fact1 fact2 = match fact1, fact2 with
+      | NonConst , _ | _ , NonConst -> NonConst
+      | _ -> UndefConst
   end
 
 (* The analysis computes, at each program point, which UIDs in scope will evaluate 
@@ -36,8 +39,37 @@ type fact = SymConst.t UidM.t
    - Uid of stores and void calls are UndefConst-out
    - Uid of all other instructions are NonConst-out
  *)
+let solve_binop (op: bop) (x:int64) (y:int64) : int64 =
+  begin match op with
+  | Add   -> Int64.add                  x y
+  | Sub   -> Int64.sub                  x y
+  | Mul   -> Int64.mul                  x y
+  | Shl   -> Int64.shift_left           x (Int64.to_int y)
+  | Lshr  -> Int64.shift_right_logical  x (Int64.to_int y)
+  | Ashr  -> Int64.shift_right          x (Int64.to_int y)
+  | And   -> Int64.logand               x y
+  | Or    -> Int64.logor                x y
+  | Xor   -> Int64.logxor               x y
+  end
+
+let solve_icmp (cnd: cnd) (x:int64) (y:int64) : int64 =
+  let cmp = begin match cnd with
+  | Eq -> x = y
+  | Ne -> x <> y
+  | Slt -> x < y
+  | Sle -> x <= y
+  | Sgt -> x > y
+  | Sge -> x >= y
+  end in
+  if cmp then 1L else 0L
+
 let insn_flow (u,i:uid * insn) (d:fact) : fact =
-  failwith "Constprop.insn_flow unimplemented"
+  begin match i with
+  | Binop (op, _, Const x, Const y) -> UidM.add u (SymConst.Const (solve_binop op x y)) d
+  | Icmp  (op, _, Const x, Const y) -> UidM.add u (SymConst.Const (solve_icmp  op x y)) d
+  | Store (_, _, Id id) | Store (_, _, Gid id) -> UidM.add id (SymConst.UndefConst) d
+  | _ -> UidM.add u (SymConst.NonConst) d
+  end
 
 (* The flow function across terminators is trivial: they never change const info *)
 let terminator_flow (t:terminator) (d:fact) : fact = d
@@ -61,9 +93,18 @@ module Fact =
       UidM.to_string (fun _ v -> SymConst.to_string v)
 
     (* The constprop analysis should take the meet over predecessors to compute the
-       flow into a node. You may find the UidM.merge function useful *)
-    let combine (ds:fact list) : fact = 
-      failwith "Constprop.Fact.combine unimplemented"
+       flow into a node. You may find the UidM.merge function useful*)
+    
+      let combine (ds:fact list) : fact =
+      let combine_element make_map fact_list =
+        (* remove duplicates with merge, and put all elements into one list *)
+        UidM.merge
+        (* If there is a predecessor or is first element ; join them   *)
+        (fun join map fact -> begin match map , fact with
+        | Some map , Some fact -> Some (SymConst.join map fact)
+        | y , None | None , y -> y
+        end) make_map fact_list in
+      List.fold_left combine_element UidM.empty ds
   end
 
 (* instantiate the general framework ---------------------------------------- *)
@@ -96,7 +137,23 @@ let run (cg:Graph.t) (cfg:Cfg.t) : Cfg.t =
   let cp_block (l:Ll.lbl) (cfg:Cfg.t) : Cfg.t =
     let b = Cfg.block cfg l in
     let cb = Graph.uid_out cg l in
-    failwith "Constprop.cp_block unimplemented"
+    let aux ((id,ins) :(uid * insn)) : (uid * insn) =
+      let temp = cb id in
+      let auxx (op: operand) : operand =
+        begin match op with 
+        | Gid id | Id id -> begin match UidM.find id temp with
+                            | Const x -> Const x
+                            | _ -> op
+                            end
+        | _ -> op
+        end in
+      begin match ins with 
+      | Binop (bop, ty, op1, op2) -> (id, Binop (bop, ty, auxx op1, auxx op2))
+      | _ -> (id, ins)
+      end
+    in
+    let block = {insns = List.map aux b.insns; term = b.term} in
+    {cfg with blocks=LblM.add l block (LblM.remove l cfg.blocks)}
   in
 
   LblS.fold cp_block (Cfg.nodes cfg) cfg
