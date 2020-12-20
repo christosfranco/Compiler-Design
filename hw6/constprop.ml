@@ -165,8 +165,8 @@ let run (cg:Graph.t) (cfg:Cfg.t) : Cfg.t =
       let temp = cb id in
       let auxx (op: operand) : operand =
         begin match op with 
-        | Gid id | Id id -> begin match UidM.find id temp with
-                            | Const x -> Const x
+        | Gid id | Id id -> begin match UidM.find_opt id temp with
+                            | Some (Const x) -> Const x
                             | _ -> op
                             end
         | _ -> op
